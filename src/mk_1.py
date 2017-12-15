@@ -1,14 +1,5 @@
 import gdax
-
-
-### global credential variables read from file
-### WARNING! If you are hard coding these variables, DO NOT push to git
-passphrase = "qg4ptkd4m2bj"
-key = "6b88670423d87e9393498ad7ac540a82"
-secret = "YHSxlOLfA+KViY/UDsJY9FQiYbHGO//D3SOn7GFFpXatHNMU82pJQoKhAsJRoITfBNI0AWQHwImmD1HhjZBs2w=="
-###
-###
-
+import sys
 
 class state():
     """
@@ -98,9 +89,35 @@ def print_prices(client):
         if "USD" in p_id:
             print(p_id + " : " + str(client.get_product_ticker(product_id=p_id)["price"]))
 
+def AuthorizeGDAX():
+    yay=0
+    while yay==0:
+        file_loc = input("Drag and drop credential file here, or type path.")
+        try:
+            cred_file = open(file_loc)
+            yay = 1
+        except:
+            print("Sorry, That file doesn't seem to exist. Please try again.")
+            yay = 0
+
+    lines = cred_file.readlines()
+    passphrase = lines[0].split()[1]
+    key = lines[1].split()[1]
+    secret = lines[2].split()[1]
+    cred_file.close()
+    try:
+        Client = gdax.AuthenticatedClient(key, secret, passphrase)
+    except:
+        print("Sorry, we could not authenticate your identity. Please specify a different file path, reformat your credentials file, or generate a new API key, secret, and passphrase.")
+        print("Goodbye.")
+        sys.exit(1)
+
+    return Client
+
 def main():
-    client = gdax.AuthenticatedClient(key, secret, passphrase)
+    client = AuthorizeGDAX()
     btc_fsm = FSM("BTC")
     print_prices(client)
+
 
 main()
