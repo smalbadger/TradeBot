@@ -24,5 +24,3 @@ This project would not be possible without [danpaquin](https://github.com/danpaq
 
 ## Where We're going
 This repository will hopefully become a collection of bots that can be pit against each other. We're hoping to collect organized data about how our bots are doing at all times and use that data to improve performance.
-
-Nic was here!
