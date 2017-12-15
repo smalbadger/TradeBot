@@ -1,0 +1,6 @@
+#credentials file
+#I can't put mine on github, but I'll tell you how it's formatted:
+#Passphrase: ********************
+#Key: *******************
+#Secret: **********************************
+credentials.txt
