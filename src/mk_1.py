@@ -26,19 +26,19 @@ class state():
     def update_percent(self, new_percent):
         self._transaction_percent = new_percent
 
-"""
-This is the finite state machine that we'll be using to decide if we should buy or sell.
-It has 6 states, 5 of which will be frequently visited.
-    "Critical-Sell" - Emergency state to dump all. This is a failsafe that hopefully will never be visited.
-                    - Can only be visited by an extreme rate of price drop and the price being below 50% of the high
-
-    "Strong-Sell"   - sell a specific amount of holdings every specific amount of time
-    "Weak-Sell"     - sell a specific amount of holdings every specific amount of time
-    "Hold"          - We don't know what to do at this point, so we won't do anything.
-    "Weak-Buy"      - buy a specific amount of holdings every specific amount of time
-    "Strong-Buy"    - buy a specific amount of holdings every specific amount of time
-"""
 class FSM():
+    """
+    This is the finite state machine that we'll be using to decide if we should buy or sell.
+    It has 6 states, 5 of which will be frequently visited.
+        "Critical-Sell" - Emergency state to dump all. This is a failsafe that hopefully will never be visited.
+                        - Can only be visited by an extreme rate of price drop and the price being below 50% of the high
+
+        "Strong-Sell"   - sell a specific amount of holdings every specific amount of time
+        "Weak-Sell"     - sell a specific amount of holdings every specific amount of time
+        "Hold"          - We don't know what to do at this point, so we won't do anything.
+        "Weak-Buy"      - buy a specific amount of holdings every specific amount of time
+        "Strong-Buy"    - buy a specific amount of holdings every specific amount of time
+    """
     def __init__(self, product):
         CS = state("Critical-Sell", None, None)
         SS = state("Strong-Sell", None, None)
@@ -66,13 +66,33 @@ class FSM():
 
         self._current_state = H
         self._currency = product
-        self._historic_prices = list()
 
     def current_state(self):
         return self._current_state
 
     def currency(self):
         return self._currency
+
+class Bot():
+    def __init__(self):
+        self._fsm = FSM("BTC")
+        self._historic_prices = list()
+        self._client = AuthorizeGDAX()
+        self._running = 0
+
+    def client():
+        return self._client
+
+    def current_state():
+        return self._fsm.current_state()
+
+    def start(self):
+        self._running = 1
+        ### This will spawn another thread (once I learn how that works) that continuously trades.
+        ### The condition to run will look like "while self._running: (trade)"
+
+    def stop(self):
+        self._running = 0
 
     def historic_prices(self):
         return self._historic_prices
@@ -83,7 +103,7 @@ class FSM():
         #so that we don't use too much memory.
         self._historic_prices = new
 
-def print_prices(client):
+def print_current_prices(client):
     for i in client.get_products():
         p_id = i["id"]
         if "USD" in p_id:
@@ -115,9 +135,10 @@ def AuthorizeGDAX():
     return Client
 
 def main():
-    client = AuthorizeGDAX()
-    btc_fsm = FSM("BTC")
-    print_prices(client)
+    tradeBot = Bot()
+    tradeBot.start()
 
+    tradeBot.stop()
+    print_current_prices(tradeBot.client)
 
 main()
