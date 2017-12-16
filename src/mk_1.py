@@ -26,6 +26,22 @@ class state():
     def update_percent(self, new_percent):
         self._transaction_percent = new_percent
 
+    def trade(self, bot):
+        history = bot.historical_prices()
+        if "buy" in self._name:
+            side = "buy"
+        elif "sell" in self._name:
+            side = "sell"
+        # product =
+        # price =
+        # order_type = "limit"
+        crypto, cash = bot.product_pool()
+        if side == "buy":
+            size = (cash * (self._transaction_percent/100))/price
+        elif side == "sell":
+            size = crypto * (self._transaction_percent/100)
+
+
 class FSM():
     """
     This is the finite state machine that we'll be using to decide if we should buy or sell.
@@ -73,12 +89,20 @@ class FSM():
     def currency(self):
         return self._currency
 
+    def run(self, robot):
+        while robot.status():
+            self._current_state.trade(robot)
+            ## move to another state
+            ## small delay to prevent kicked
+
 class Bot():
     def __init__(self):
         self._fsm = FSM("BTC")
         self._historic_prices = list()
         self._client = AuthorizeGDAX()
         self._running = 0
+        self._crypto = 1000
+        self._cash = 1000
 
     def client():
         return self._client
@@ -90,6 +114,7 @@ class Bot():
         self._running = 1
         ### This will spawn another thread (once I learn how that works) that continuously trades.
         ### The condition to run will look like "while self._running: (trade)"
+        self._fsm.run(self)
 
     def stop(self):
         self._running = 0
@@ -102,6 +127,12 @@ class Bot():
         #I just want to put new values at the front of it and take values off the end
         #so that we don't use too much memory.
         self._historic_prices = new
+
+    def product_pool(self):
+        return self._crypto, self._cash
+
+    def status():
+        return self._running
 
 def print_current_prices(client):
     for i in client.get_products():
