@@ -24,6 +24,7 @@ def main():
         av = (item[1] + item[2])/2
         averages.append(av)
 
+    #now I'll print the times and averages all pretty :)
     for i in range(0, len(times)):
         print(str(times[i]) + ": " + str(averages[i]))
 
