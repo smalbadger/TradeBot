@@ -2,13 +2,11 @@
 Welcome to the TradeBot Repository! 
 
 #### TODO:
-+ subscribe to websocket to get real-time information
-+ maintain a price history list from websocket
 + nail down the state transition algorithm
 + finish fake-trade functionality
 + plot our fake trades to see if our algorithm works or needs to be improved
 + create functionality to make real trades
-+ lots and lots of data analysis
++ lots and lots of data analysis and graph making
 + use machine learning type stuff to predict behavior from order book and optimize transaction percentage amounts and state transition buffers.
 
 + figure out how to use tkinter - we'll use this to make the GUI unless someone has a better idea
