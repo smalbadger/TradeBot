@@ -5,6 +5,10 @@ import plotly
 import plotly.plotly as py
 import plotly.graph_objs as go
 
+
+################################################################################
+#                                 STATE                                        #
+################################################################################
 class state():
     """
         This class contains information for a single state of the finite state machine.
@@ -60,7 +64,9 @@ class state():
             size = crypto * (self._transaction_percent/100)
 
 
-
+################################################################################
+#                           FINITE STATE MACHINE                               #
+################################################################################
 class FSM():
     def __init__(self):
         """
@@ -151,34 +157,68 @@ class FSM():
             first checks to see if we need to change states, then makes the trade and updates the portfolio.
             we sleep for a short amount of time so we don't get blocked. (max server requests per second = 3)
         """
-        while robot.status():
-            self.change_state(robot.historical_prices())
-            self._current_state.trade(robot)
-            #robot.create_portfolio()
-            
-            time.sleep(.3)
+        #while robot.status():
+        self.change_state(robot.historical_prices())
+        self._current_state.trade(robot)
+        robot.create_portfolio()
+        
+        time.sleep(.3)
+
+################################################################################
+#                                 BotSocket                                    #
+################################################################################
+class BotSocket(gdax.WebsocketClient):
+    def on_open(self):
+        print("-- Starting Bot Socket --")
+        self._history_size = 500
+        self._history = []
+        self._message_count = 0
+        
+
+    def on_message(self, msg):
+        self._message_count += 1
+        if 'price' in msg and 'type' in msg:
+            print ("Message type:", msg["type"], "\t@ {:.3f}".format(float(msg["price"])))
+            if len(_history) >= self._history_size:
+                self._history = self._history[1:].append(msg["price"])
+
+    def on_close(self):
+        print("-- Terminating Bot Socket --")
 
 
+################################################################################
+#                                   Bot                                        #
+################################################################################
 class Bot():
     def __init__(self, currency):
         """
            This is the actual Bot. It contains account information including a client object needed to interact with GDAX.
         """
-        self._currency = currency
+        self._passphrase = ""
+        self._secret = ""
+        self._key = ""
+        self.get_credentials()
+        self._client = gdax.AuthenticatedClient(self._key, self._secret, self._passphrase)
+        self._socket = BotSocket(products=currency)
         self._fsm = FSM()
-        self._historic_prices = []
-        self._client = AuthorizeGDAX()
-        self._running = 0
-        self._crypto = 1000
-        self._cash = 1000
+        self._currency = currency
+        self._running = False
+        self._crypto = 0
+        self._cash = 0
+    
+        self.scramble_credentials()
 
     ##---- GETTERS ----##
+    def socket(self):
+        return self._socket
     def client(self):
         return self._client
     def current_state():
         return self._fsm.current_state()
+    def history_is_full(self):
+        return len(self._socket._history) == self._socket._history_size
     def historical_prices(self):
-        return self._historic_prices
+        return self._socket._history
     def product_pool(self):
         return self._crypto, self._cash
     def status(self):
@@ -199,15 +239,41 @@ class Bot():
             else:
                 print("Unkown currency" + currency)
         return USD, BTC, ETH, LTC
+    
+    def get_credentials(self):
+        yay = 0
+        while yay == 0:
+            file_loc = input("Drag and drop credential file here, or type path: ")
+            try:
+                cred_file = open(file_loc)
+                yay = 1
+            except:
+                print("Sorry, That file doesn't seem to exist. Please try again.")
+                yay = 0
+
+        lines = cred_file.readlines()
+        self._passphrase = lines[0].split()[1]
+        self._key = lines[1].split()[1]
+        self._secret = lines[2].split()[1]
+        cred_file.close()
+                    
+    def scramble_credentials(self):
+        """
+           It isn't a good idea to store sensitive information if you don't have to, so we'll just over-write it all. 
+        """
+        self._passphrase = "Passphrase? What's that? I don't know what an API Passphrase is. Sorry, I think you got me confused with someone else"
+        self._key = "Key? What's that? I don't know what an API Key is. Sorry, I think you got me confused with someone else"
+        self._secret = "Secret? What's that? I don't know what an API Secret is. Sorry, I think you got me confused with someone else"
 
     def start(self):
-        self._running = 1
+        self._running = True
         ### This will spawn another thread (once I learn how that works) that continuously trades.
         ### The condition to run will look like "while self._running: (trade)"
         self._fsm.run(self)
     
     def stop(self):
-        self._running = 0
+        self._running = False   #shut down client
+        self.socket().close()   #shut down web socket.
     
     def update_historic_prices(self, new):
         #This will change. I don't actually want to update the whole list,
@@ -261,45 +327,10 @@ class Bot():
         for i in self.client().get_products():
             p_id = i["id"]
             if "USD" in p_id:
-                print(p_id + " : " + str(client.get_product_ticker(product_id=p_id)["price"]))
-
-def AuthorizeGDAX():
-    """
-        This function should only be called when a Bot is initialized. It authorizes the bot to use your GDAX account.
-        1) You must obtain an API passphrase, key, and secret. Put them in a file formatted as follows:
-                    passphrase: XXXXXXXXXXXXX
-                    key:        XXXXXXXXXXXXXXXXXXXXXXXXXX
-                    secret:     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-           I recommend storing this file in the TradeBot directory because git will ignore it. you DO NOT want to push this to git.
-           If you accidentally do, you need to generate a new key ASAP and delete the old one.
-    """
-    yay = 0
-    while yay == 0:
-        file_loc = input("Drag and drop credential file here, or type path: ")
-        try:
-            cred_file = open(file_loc)
-            yay = 1
-        except:
-            print("Sorry, That file doesn't seem to exist. Please try again.")
-            yay = 0
-
-    lines = cred_file.readlines()
-    passphrase = lines[0].split()[1]
-    key = lines[1].split()[1]
-    secret = lines[2].split()[1]
-    cred_file.close()
-    try:
-        Client = gdax.AuthenticatedClient(key, secret, passphrase)
-    except:
-        print("Sorry, we could not authenticate your identity.") 
-        print("Please specify a different file path, re-format your credentials file, or generate a new API key, secret, and passphrase.")
-        print("Goodbye.")
-        sys.exit(1)
-
-    return Client
+                print(p_id + " : " + str(self.client().get_product_ticker(product_id=p_id)["price"]))
 
 def main():
-    BitBot = Bot("BTC")
+    BitBot = Bot("BTC-USD")
     BitBot.start()
     BitBot.stop()
     BitBot.print_current_prices()
