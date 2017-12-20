@@ -162,28 +162,37 @@ class FSM():
         self._current_state.trade(robot)
         robot.create_portfolio()
         
-        time.sleep(.3)
+        time.sleep(30)
+
+        print(robot.historical_prices())
 
 ################################################################################
 #                                 BotSocket                                    #
 ################################################################################
 class BotSocket(gdax.WebsocketClient):
-    def on_open(self):
-        print("-- Starting Bot Socket --")
-        self._history_size = 500
+    def __init__(self, product, key, secret, passphrase):
+        super(BotSocket, self).__init__(products=product)
+        self._history_size = 100000
         self._history = []
         self._message_count = 0
         
-
+    def on_open(self):
+        print("-- Starting Bot Socket --")
+        self._history = []
+        self._message_count = 0
+        self.stop = 0
+        
     def on_message(self, msg):
         self._message_count += 1
         if 'price' in msg and 'type' in msg:
             print ("Message type:", msg["type"], "\t@ {:.3f}".format(float(msg["price"])))
-            if len(_history) >= self._history_size:
-                self._history = self._history[1:].append(msg["price"])
+            if msg["type"] == "done":   #a "done" message means that the it's being traded at that price.
+                if len(self._history) >= self._history_size:
+                    self._history = self._history[1:].append(msg["price"])
 
     def on_close(self):
         print("-- Terminating Bot Socket --")
+        self.stop = 1
 
 
 ################################################################################
@@ -199,7 +208,7 @@ class Bot():
         self._key = ""
         self.get_credentials()
         self._client = gdax.AuthenticatedClient(self._key, self._secret, self._passphrase)
-        self._socket = BotSocket(products=currency)
+        self._socket = BotSocket(product=currency, key=self._key, secret=self._secret, passphrase=self._passphrase)
         self._fsm = FSM()
         self._currency = currency
         self._running = False
@@ -236,9 +245,11 @@ class Bot():
                 LTC = amount
             elif currency == "ETH":
                 ETH = amount
+            elif currency == "BCH":
+                BCH = amount
             else:
-                print("Unkown currency" + currency)
-        return USD, BTC, ETH, LTC
+                print("Unkown currency " + currency)
+        return USD, BTC, BCH, ETH, LTC
     
     def get_credentials(self):
         yay = 0
@@ -267,6 +278,7 @@ class Bot():
 
     def start(self):
         self._running = True
+        self._socket.start()
         ### This will spawn another thread (once I learn how that works) that continuously trades.
         ### The condition to run will look like "while self._running: (trade)"
         self._fsm.run(self)
@@ -292,18 +304,18 @@ class Bot():
             if "USD" in p_id:
                 prices[p_id] = float(self.client().get_product_ticker(product_id=p_id)["price"])
         
-        USD, BTC_amount, ETH_amount, LTC_amount = self.get_balances()
-        BTC_worth, ETH_worth, LTC_worth = (BTC_amount * prices["BTC-USD"]), (ETH_amount * prices["ETH-USD"]), (LTC_amount * prices["LTC-USD"]),
+        USD, BTC_amount, BCH_amount, ETH_amount, LTC_amount = self.get_balances()
+        BTC_worth, BCH_worth, ETH_worth, LTC_worth = (BTC_amount * prices["BTC-USD"]), (BCH_amount * prices["BCH-USD"]), (ETH_amount * prices["ETH-USD"]), (LTC_amount * prices["LTC-USD"]),
         
-        net_worth = USD + BTC_worth + ETH_worth + LTC_worth
+        net_worth = USD + BTC_worth + BCH_worth + ETH_worth + LTC_worth
         net_worth = round(net_worth, 2)
         title = "GDAX\n${}".format(net_worth)
         
         plotly.tools.set_credentials_file(username='TradeBotTeam', api_key='SJTSXTDYHHtwLyul8olP')
         fig = {
             "data": [{
-                 "values": [USD, BTC_worth, ETH_worth, LTC_worth],
-                 "labels": ["USD", "BTC", "ETH", "LTC"],
+                 "values": [USD, BTC_worth, BCH_worth, ETH_worth, LTC_worth],
+                 "labels": ["USD", "BTC", "BCH", "ETH", "LTC"],
                  "domain": {"x": [0, 1]},
                  "name"  : "Portfolio",
                  "hoverinfo": "label+percent+name",
