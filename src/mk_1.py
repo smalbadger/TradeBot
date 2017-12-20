@@ -20,9 +20,16 @@ class state():
         self._prev = prev
         self._low = 1000000000
         self._high = 0
-        self._upper_threshold = 0
-        self._lower_threshold = 0
-        self._entry = 0
+        self._upper_threshold = 0   #currently not using this
+        self._lower_threshold = 0   #currently not using this
+        self._entry = None
+        
+        if "Sell" in name:
+            self._transaction_type = "sell"
+        elif "Buy" in name:
+            self._transaction_type = "buy"
+        elif "Hold" in name:
+            self._transaction_type = "hold"
     
     ##---- GETTERS ----##
     def next(self):
@@ -122,45 +129,63 @@ class FSM():
         if len(history) == 0:
             return
         
+        last_price = history[-1]
+        
         cur_state = self.current_state()
         thresh = cur_state.thresholds()
         
-        last_price = history[-1]
+        high = thresh["high"]
+        low = thresh["low"]
         
-        if "Sell" in cur_state.name():
-            type = "sell"
-        elif "Buy" in cur_state.name():
-            type = "buy"
-        elif "Hold" in cur_state.name():
-            type = "hold"
-
-        if last_price > thresh["high"]:
+        entry = self.entry()
+        if entry == None:
+            self._entry = last_price
+        
+        #update high and low
+        if last_price > high:
             cur_state.set_high(last_price)
-        if last_price < thresh["low"]:
+            high = last_price
+        if last_price < low:
             cur_state.set_low(last_price)
+            low = last_price
         
-        #FIXME: The conditions to change states below are wrong and need to be though out better
-        #move towards buy
-        if last_price >= cur_state.entry() + (cur_state.entry() * self._transition_buffer/100):
-            if(current_state.next() != None):
-                self._current_state = current_state.next()
-                self._entry = last_price
+        #Decide if the bot should change states
+        if cur_state.name() == "Strong-Buy":
+            if last_price < (high - high * self._transition_buffer/100):
+                next_state = cur_state.prev()
         
-        #move towards sell
-        if last_price <= cur_state.entry() - (cur_state.entry() * self._transition_buffer/100):
-            if(current_state.prev() != None):
-                self._current_state = current_state.prev()
-                self._entry = last_price
+        elif cur_state.name() == "Weak-Buy" or cur_state.name() == "Hold" or cur_state.name() == "Weak-Sell":
+            if last_price < (entry - entry * self._transition_buffer/100):
+                next_state = cur_state.prev()
+            elif last_price > (entry + entry * self._transition_buffer/100):
+                next_state = cur_state.next()
+
+        elif cur_state.name() == "Strong-Sell":
+            if last_price > (low + low * self._transition_buffer/100):
+                next_state = cur_state.next()
+            elif last_price < (entry*.9):  #only move to critical sell if the price decreases 10% after reaching strong sell state
+                next_state = cur_state.prev()
+
+        elif cur_state.name() == "Critical-Sell":
+            if last_price > (low + low * self._transition_buffer/100):
+                next_state = cur_state.next()
+
+        else:
+            print("ERROR: bot is at unknown state. Please check the logs.")
+            sys.exit(1)
+
+        cur_state = next_state
+        cur_state._entry = last_price
             
     def run(self, robot):
         """
             first checks to see if we need to change states, then makes the trade and updates the portfolio.
             we sleep for a short amount of time so we don't get blocked. (max server requests per second = 3)
         """
-        #while robot.status():
-        self.change_state(robot.historical_prices())
-        self._current_state.trade(robot)
-        robot.create_portfolio()
+        while robot.status():
+            self.change_state(robot.historical_prices())
+            self._current_state.trade(robot)
+        #robot.create_portfolio()
         
         time.sleep(30)
 
@@ -188,12 +213,14 @@ class BotSocket(gdax.WebsocketClient):
             print ("Message type:", msg["type"], "\t@ {:.3f}".format(float(msg["price"])))
             if msg["type"] == "done":   #a "done" message means that the it's being traded at that price.
                 if len(self._history) >= self._history_size:
-                    self._history = self._history[1:].append(msg["price"])
+                    self._history = (self._history[1:]).append(msg["price"])
 
     def on_close(self):
         print("-- Terminating Bot Socket --")
         self.stop = 1
-
+        self.thread.join()
+        print("message count: " + str(self._message_count))
+        
 
 ################################################################################
 #                                   Bot                                        #

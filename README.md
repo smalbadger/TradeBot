@@ -2,7 +2,6 @@
 Welcome to the TradeBot Repository! 
 
 #### TODO:
-+ nail down the state transition algorithm
 + finish fake-trade functionality
 + plot our fake trades to see if our algorithm works or needs to be improved
 + create functionality to make real trades
