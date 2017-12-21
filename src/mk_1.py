@@ -1,6 +1,7 @@
 import gdax
 import sys
 import time
+from threading import Thread
 import plotly
 import plotly.plotly as py
 import plotly.graph_objs as go
@@ -70,7 +71,6 @@ class state():
         elif side == "sell":
             size = crypto * (self._transaction_percent/100)
 
-
 ################################################################################
 #                           FINITE STATE MACHINE                               #
 ################################################################################
@@ -116,6 +116,8 @@ class FSM():
 
         self._current_state = H
         self._transition_buffer = .1
+        self._trade_thread = None
+        self._state_log = open("state_log.txt")
 
     def current_state(self):
         return self._current_state
@@ -137,7 +139,7 @@ class FSM():
         high = thresh["high"]
         low = thresh["low"]
         
-        entry = self.entry()
+        entry = cur_state.entry()
         if entry == None:
             self._entry = last_price
         
@@ -182,14 +184,17 @@ class FSM():
             first checks to see if we need to change states, then makes the trade and updates the portfolio.
             we sleep for a short amount of time so we don't get blocked. (max server requests per second = 3)
         """
-        while robot.status():
-            self.change_state(robot.historical_prices())
-            self._current_state.trade(robot)
-        #robot.create_portfolio()
-        
-        time.sleep(30)
+        def _trade_routine():
+            while robot.status():
+                self._trade_log.write(self.current_state().name())
+                self.change_state(robot.historical_prices())
+                self._current_state.trade(robot)
+                #robot.create_portfolio()
+                time.sleep(.5)
+            self._state_log.close()
 
-        print(robot.historical_prices())
+        self._trade_thread = Thread(target=_trade_routine)
+        self._trade_thread.start()
 
 ################################################################################
 #                                 BotSocket                                    #
@@ -213,15 +218,16 @@ class BotSocket(gdax.WebsocketClient):
             print ("Message type:", msg["type"], "\t@ {:.3f}".format(float(msg["price"])))
             if msg["type"] == "done":   #a "done" message means that the it's being traded at that price.
                 if len(self._history) >= self._history_size:
-                    self._history = (self._history[1:]).append(msg["price"])
+                    self._history = (self._history[1:]).append(int(msg["price"]))
+                else:
+                    self._history.append(int(msg["price"]))
 
     def on_close(self):
-        print("-- Terminating Bot Socket --")
         self.stop = 1
         self.thread.join()
+        print("-- Terminating Bot Socket --")
         print("message count: " + str(self._message_count))
         
-
 ################################################################################
 #                                   Bot                                        #
 ################################################################################
@@ -312,6 +318,7 @@ class Bot():
     
     def stop(self):
         self._running = False   #shut down client
+        self._fsm._trade_thread.join()     #close trading thread
         self.socket().close()   #shut down web socket.
     
     def update_historic_prices(self, new):
@@ -371,6 +378,7 @@ class Bot():
 def main():
     BitBot = Bot("BTC-USD")
     BitBot.start()
+    time.sleep(60)      #makes the bot run for 1 minute. There must be a delay.
     BitBot.stop()
     BitBot.print_current_prices()
 
