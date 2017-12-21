@@ -19,19 +19,19 @@ class state():
         self._transaction_percent = 5
         self._next = next
         self._prev = prev
-        self._low = 1000000000
+        self._low = 10000000
         self._high = 0
         self._upper_threshold = 0   #currently not using this
         self._lower_threshold = 0   #currently not using this
         self._entry = None
-        
+
         if "Sell" in name:
             self._transaction_type = "sell"
         elif "Buy" in name:
             self._transaction_type = "buy"
         elif "Hold" in name:
             self._transaction_type = "hold"
-    
+
     ##---- GETTERS ----##
     def next(self):
         return self._next
@@ -51,10 +51,10 @@ class state():
             This method updates the transaction percent for a state.
         """
         self._transaction_percent = new_percent
-    
+
     def trade(self, bot):
         """
-           This method initiates a trade. Each state will make a trade, except for the hold state. 
+           This method initiates a trade. Each state will make a trade, except for the hold state.
         """
         if "buy" in self._name:
             side = "buy"
@@ -81,13 +81,13 @@ class FSM():
             It has 6 states, 5 of which will be frequently visited.
             "Critical-Sell" - Emergency state to dump all. This is a failsafe that hopefully will never be visited.
             - Can only be visited by an extreme rate of price drop and the price being below 50% of the high
-            
+
             "Strong-Sell"   - sell a specific amount of holdings every specific amount of time
             "Weak-Sell"     - sell a specific amount of holdings every specific amount of time
             "Hold"          - We don't know what to do at this point, so we won't do anything.
             "Weak-Buy"      - buy a specific amount of holdings every specific amount of time
             "Strong-Buy"    - buy a specific amount of holdings every specific amount of time
-            
+
             the run() method will be used to start trading and state transitions.
         """
         CS = state("Critical-Sell", None, None)
@@ -117,7 +117,7 @@ class FSM():
         self._current_state = H
         self._transition_buffer = .1
         self._trade_thread = None
-        self._state_log = open("state_log.txt")
+        self._state_log = open("state_log.txt", "w")
 
     def current_state(self):
         return self._current_state
@@ -130,19 +130,19 @@ class FSM():
         """
         if len(history) == 0:
             return
-        
+
         last_price = history[-1]
-        
+
         cur_state = self.current_state()
         thresh = cur_state.thresholds()
-        
+
         high = thresh["high"]
         low = thresh["low"]
-        
+
         entry = cur_state.entry()
         if entry == None:
             self._entry = last_price
-        
+
         #update high and low
         if last_price > high:
             cur_state.set_high(last_price)
@@ -150,12 +150,12 @@ class FSM():
         if last_price < low:
             cur_state.set_low(last_price)
             low = last_price
-        
+
         #Decide if the bot should change states
         if cur_state.name() == "Strong-Buy":
             if last_price < (high - high * self._transition_buffer/100):
                 next_state = cur_state.prev()
-        
+
         elif cur_state.name() == "Weak-Buy" or cur_state.name() == "Hold" or cur_state.name() == "Weak-Sell":
             if last_price < (entry - entry * self._transition_buffer/100):
                 next_state = cur_state.prev()
@@ -178,15 +178,15 @@ class FSM():
 
         cur_state = next_state
         cur_state._entry = last_price
-            
+
     def run(self, robot):
         """
             first checks to see if we need to change states, then makes the trade and updates the portfolio.
             we sleep for a short amount of time so we don't get blocked. (max server requests per second = 3)
         """
         def _trade_routine():
-            while robot.status():
-                self._trade_log.write(self.current_state().name())
+            for i in range(60):
+                self._state_log.write(self.current_state().name())
                 self.change_state(robot.historical_prices())
                 self._current_state.trade(robot)
                 #robot.create_portfolio()
@@ -205,29 +205,29 @@ class BotSocket(gdax.WebsocketClient):
         self._history_size = 100000
         self._history = []
         self._message_count = 0
-        
+
     def on_open(self):
         print("-- Starting Bot Socket --")
         self._history = []
         self._message_count = 0
         self.stop = 0
-        
+
     def on_message(self, msg):
         self._message_count += 1
         if 'price' in msg and 'type' in msg:
             print ("Message type:", msg["type"], "\t@ {:.3f}".format(float(msg["price"])))
             if msg["type"] == "done":   #a "done" message means that the it's being traded at that price.
                 if len(self._history) >= self._history_size:
-                    self._history = (self._history[1:]).append(int(msg["price"]))
+                    self._history = (self._history[1:]).append(float(msg["price"]))
                 else:
-                    self._history.append(int(msg["price"]))
+                    self._history.append(float(msg["price"]))
 
     def on_close(self):
         self.stop = 1
         self.thread.join()
         print("-- Terminating Bot Socket --")
         print("message count: " + str(self._message_count))
-        
+
 ################################################################################
 #                                   Bot                                        #
 ################################################################################
@@ -247,7 +247,7 @@ class Bot():
         self._running = False
         self._crypto = 0
         self._cash = 0
-    
+
         self.scramble_credentials()
 
     ##---- GETTERS ----##
@@ -283,7 +283,7 @@ class Bot():
             else:
                 print("Unkown currency " + currency)
         return USD, BTC, BCH, ETH, LTC
-    
+
     def get_credentials(self):
         yay = 0
         while yay == 0:
@@ -300,10 +300,10 @@ class Bot():
         self._key = lines[1].split()[1]
         self._secret = lines[2].split()[1]
         cred_file.close()
-                    
+
     def scramble_credentials(self):
         """
-           It isn't a good idea to store sensitive information if you don't have to, so we'll just over-write it all. 
+           It isn't a good idea to store sensitive information if you don't have to, so we'll just over-write it all.
         """
         self._passphrase = "Passphrase? What's that? I don't know what an API Passphrase is. Sorry, I think you got me confused with someone else"
         self._key = "Key? What's that? I don't know what an API Key is. Sorry, I think you got me confused with someone else"
@@ -315,12 +315,12 @@ class Bot():
         ### This will spawn another thread (once I learn how that works) that continuously trades.
         ### The condition to run will look like "while self._running: (trade)"
         self._fsm.run(self)
-    
+
     def stop(self):
         self._running = False   #shut down client
         self._fsm._trade_thread.join()     #close trading thread
         self.socket().close()   #shut down web socket.
-    
+
     def update_historic_prices(self, new):
         #This will change. I don't actually want to update the whole list,
         #I just want to put new values at the front of it and take values off the end
@@ -337,14 +337,14 @@ class Bot():
             p_id = i["id"]
             if "USD" in p_id:
                 prices[p_id] = float(self.client().get_product_ticker(product_id=p_id)["price"])
-        
+
         USD, BTC_amount, BCH_amount, ETH_amount, LTC_amount = self.get_balances()
         BTC_worth, BCH_worth, ETH_worth, LTC_worth = (BTC_amount * prices["BTC-USD"]), (BCH_amount * prices["BCH-USD"]), (ETH_amount * prices["ETH-USD"]), (LTC_amount * prices["LTC-USD"]),
-        
+
         net_worth = USD + BTC_worth + BCH_worth + ETH_worth + LTC_worth
         net_worth = round(net_worth, 2)
         title = "GDAX\n${}".format(net_worth)
-        
+
         plotly.tools.set_credentials_file(username='TradeBotTeam', api_key='SJTSXTDYHHtwLyul8olP')
         fig = {
             "data": [{
@@ -364,8 +364,8 @@ class Bot():
                      "text": title
                  }]
              }
-        }    
-            
+        }
+
         pie_chart = py.plot(fig, filename="GDAX_porfolio_pie_chart")
         return pie_chart
 
