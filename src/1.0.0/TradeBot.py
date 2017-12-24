@@ -1,9 +1,7 @@
 from bot import *
 
 def test_1():
-    key = "beb4b062b68a47620d306f07c8256ca2"
-    secret = "IgMJoO0Xz8KHkP8wVduWVxen3BHgtnb2MjMU8mAop6VMh4/oD9oYhyizQS/fXrNIY+KclLOitutDymBZx8R+TQ=="
-    passphrase = "12qpfghl23jq" 
+
     currency = "BTC-USD"
     socket = BotSocket(product=currency, key=key, secret=secret, passphrase=passphrase)
 
@@ -58,10 +56,7 @@ def test_1():
     print("Bitcoin gained " + str(round((BitBot1.historical_prices()[0] - BitBot1.historical_prices()[-1])*100/BitBot1.historical_prices()[0],2)) + "%")
 
 def main():
-    key = "beb4b062b68a47620d306f07c8256ca2"
-    secret = "IgMJoO0Xz8KHkP8wVduWVxen3BHgtnb2MjMU8mAop6VMh4/oD9oYhyizQS/fXrNIY+KclLOitutDymBZx8R+TQ=="
-    passphrase = "12qpfghl23jq" 
-    
+
     currency = ["BTC-USD", "LTC-USD", "ETH-USD", "BCH-USD"]
     socket = BotSocket(product=currency, channels=["matches"], key=key, secret=secret, passphrase=passphrase)
     socket.start()
