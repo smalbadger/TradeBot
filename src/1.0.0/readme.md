@@ -1,6 +1,5 @@
 # TradeBot 1.0.0
-Welcome to TradeBot! This document describes the architecture of this specific version of TradeBot. Please note
-that this document is best viewed in a text editor in full screen mode as it contains superb ascii drawings.
+Welcome to TradeBot! This document describes the architecture of this specific version of TradeBot.
 
 ## Bot
 <pre>                            
