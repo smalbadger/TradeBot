@@ -24,7 +24,7 @@ For this repository, we will be following some git rules.
 + pull          - git pull origin <your_branch>
 + add           - git add .
 + commit        - git commit -m "<your_commit_message>"
-+ push          - git push origin <your_branch>
++ push          - git push origin HEAD:<your_branch>
 
 ## Privacy policy
 If you have access to this repository, please do not give access to anyone else without unanimous consent from all contributors.
