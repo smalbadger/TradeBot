@@ -37,22 +37,28 @@ We are subtracting one because the BotSocket also requires its own thread. Becau
 
 ## BotSocket
 <pre>
-  /\     /|      /\             This is the BotSocket object. If you couldn't tell, the picture is a solid object going into a 
- /  \   / |     //\\        space. Don't judge, I'm no Artist. The BotSocket class is really just a wrapper of the WebSocket
- |  |  /  ------||||        class. I just add on a few of my own variables and store data however I want. Any history that is
- |  |  \  ______||||        kept will member variables of this class. There are many member variables of the WebSocket, so you
- \  /   \ |     \\//        you can look at those yourself, but the fields added into the BotSocket class are listed below:
-  \/     \|      \/
-                                + history_size - We can only keep a certain amount of history before we run out of memory. 
-                                  I don't know that this has to be used, but it should be. 
-                                  
-                                + history - We keep the history of all cryptocurrencies in a dictionary. Each key is the product_id 
-                                  such as "BTC-USD". The value of each key is a list of dictionaries where each element of the list
-                                  has the fields "price", "side", "time", and "sequence". Note that you can store any other information
-                                  by adding to the "on_message" method.
-                                  
-                                + message_count - Every time we recieve a message, we add one to this field. This field is useless
-                                  for now, but feel free to use it if you want.
+_________________________       This is the BotSocket object. If you couldn't tell, the picture is a solid object going into a 
+|                       |   space. Don't judge, I'm no Artist. The BotSocket class is really just a wrapper of the WebSocket
+|                       |   class. I just add on a few of my own variables and store data however I want. Any history that is
+|       __________      |   kept will member variables of this class. There are many member variables of the WebSocket, so you
+|      /  _    _  \     |   you can look at those yourself, but the fields added into the BotSocket class are listed below:
+|     /  | |  | |  \    |
+|    |   | |  | |   |   |       + history_size - We can only keep a certain amount of history before we run out of memory. 
+|    |   | |  | |   |   |         I don't know that this has to be used, but it should be. 
+|     \  |_|  |_|  /    |                                  
+|      \__________/     |       + history - We keep the history of all cryptocurrencies in a dictionary. Each key is the product_id 
+|                       |         such as "BTC-USD". The value of each key is a list of dictionaries where each element of the list
+|           ()          |         has the fields "price", "side", "time", and "sequence". Note that you can store any other information
+|       __________      |         by adding to the "on_message" method.
+|      /  _    _  \     |                                  
+|     /  | |  | |  \    |       + message_count - Every time we recieve a message, we add one to this field. This field is useless
+|    |   | |  | |   |   |         for now, but feel free to use it if you want.
+|    |   | |  | |   |   |
+|     \  |_|  |_|  /    |
+|      \__________/     |
+|                       |
+|                       |
+|_______________________|
 </pre>                                 
                                   
 ## Finite State Machine
