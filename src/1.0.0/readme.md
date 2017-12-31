@@ -3,7 +3,7 @@ Welcome to TradeBot! This document describes the architecture of this specific v
 that this document is best viewed in a text editor in full screen mode as it contains superb ascii drawings.
 
 ## Bot
-                            
+`                            
            /\                   This is the Bot object. It is the highest level of looking at the trading program, The user will      
            \/               only interact with this class through a GUI. Each Bot will only be able to trade a single cryptocurrency,
            ||               so the user will be able to start/stop each bot. Right now, GDAX only supports Bitcoin, Bitcoin Cash, Ethereum,
@@ -34,10 +34,10 @@ computer, and google your exact processor model. You should see the number of co
 the following calculation: Bots = (cores * threads) - 1
                    
 We are subtracting one because the BotSocket also requires its own thread. Because of this, we should have all the Bot instantiations share a single websocket.
-
+`
 
 ## BotSocket
-
+`
   /\     /|      /\             This is the BotSocket object. If you couldn't tell, the picture is a solid object going into a 
  /  \   / |     //\\        space. Don't judge, I'm no Artist. The BotSocket class is really just a wrapper of the WebSocket
  |  |  /  ------||||        class. I just add on a few of my own variables and store data however I want. Any history that is
@@ -54,10 +54,10 @@ We are subtracting one because the BotSocket also requires its own thread. Becau
                                   
                                 + message_count - Every time we recieve a message, we add one to this field. This field is useless
                                   for now, but feel free to use it if you want.
-                                  
+`                                 
                                   
 ## Finite State Machine
-
+`
     /----\                      Although the FSM (Finite State Machine) and State classes are separate from each other, we'll
     | CS |                  describe them together since they are practically inseparable. Basically, this is what decides if
     \----/                  we need to buy or sell and if so, how much. Here's how the trading algorithm works:
@@ -91,10 +91,10 @@ We are subtracting one because the BotSocket also requires its own thread. Becau
     /----\
     | SB |
     \----/
-    
+`   
     
 ## GDAX Client
-
+`
     /-----\                     This is the Client Object. You can read more about it on danpaquin's repository, since he wrote the code.
     |     |      /-----\    There is a link to his page in the readme file in the TradeBot directory. Although I really just wanted to 
     |   oo|      |oo   |    draw two dudes shaking hands with symbols, I guess I'll give an explanation of what the Client class does.
@@ -109,7 +109,7 @@ We are subtracting one because the BotSocket also requires its own thread. Becau
        /\           /\
       /  \         /  \
      /    \       /    \
-
+`
 
 
            /\           
