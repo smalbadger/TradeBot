@@ -16,14 +16,15 @@
     but feel free to create your own additional methods and member variables
 """
 
+import sys
 import gdax
 
 ################################################################################
 #                                 BotSocket                                    #
 ################################################################################
 class BotSocket(gdax.WebsocketClient):
-    def __init__(self, product, key, secret, passphrase, channels):
-        super(BotSocket, self).__init__(products=product, channels=channels)
+    def __init__(self, product=None, key=None, secret=None, passphrase=None, channels=None):
+        super(BotSocket, self).__init__(products=product, api_key=key, api_secret=secret, api_passphrase=passphrase, channels=channels)
         self._history_size = 1000
         self._history = {"BTC-USD": [], "BCH-USD": [], "LTC-USD": [], "ETH-USD": []}
         self._message_count = 0
@@ -35,23 +36,26 @@ class BotSocket(gdax.WebsocketClient):
         self.stop = 0
 
     def on_message(self, msg):
-        """
-            FIXME: put each product in its corresponding array in the dictionary
-        """
         self._message_count += 1
-        print(msg)
-        """
-        if 'price' in msg and 'type' in msg:
-            if msg["type"] == "done":   #a "done" message means that the it's being traded at that price.
-                print ("Message type:", msg["type"], "\t@ {:.3f}".format(float(msg["price"])))
-                if len(self._history) >= self._history_size:
-                    self._history = (self._history[1:]).append(float(msg["price"]))
-                else:
-                    self._history.append(float(msg["price"]))
-        """
         
+        if 'product_id' in msg and 'price' in msg and 'side' in msg and 'type' in msg and msg['type'] == 'match' and 'time' in msg and 'sequence' in msg:
+            i = 0
+            length = len(self._history[msg['product_id']])
+            while length != 0 and msg['sequence'] < self._history[msg['product_id']][length-i-1]["sequence"]:
+                i = i + 1
+            product_id =   str(msg['product_id'])
+            price      = float(msg['price'     ])
+            side       =   str(msg['side'      ])
+            time       =   str(msg['time'      ])
+            sequence   =   int(msg['sequence'  ])
+            if i == 0:
+                self._history[msg['product_id']].append({"price": price, "side": side, "time": time, "sequence": sequence})
+            else:
+                self._history[msg['product_id']].insert(length-i, {"price": price, "side": side, "time": time, "sequence": sequence})
+            
+            print("{}: {:10.2f}\t{}".format(product_id, price, side))
+            
     def on_close(self):
         self.stop = 1
-        self.thread.join()
         print("-- Terminating Bot Socket --")
         print("message count: " + str(self._message_count))

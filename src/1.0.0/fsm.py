@@ -16,8 +16,8 @@
     trade a certain percent of the available balance, and the strong states trade more. The critical sell state will trade the most.
 """
 
-import gdax
 import sys
+import gdax
 import time
 from threading import Thread
 
@@ -25,10 +25,10 @@ from threading import Thread
 #                                 STATE                                        #
 ################################################################################
 class state():
-    def __init__(self, state_id, name, next=None, prev=None, transaction_percent=0, next_buffer=None, prev_buffer=None):
+    def __init__(self, state_id, name, next=None, prev=None, transaction_percent=0, next_buffer=0, prev_buffer=0):
         self._id = state_id
         self._name = name
-        self._transaction_percent = 0
+        self._transaction_percent = transaction_percent
         self._next = next
         self._prev = prev
         self._next_buffer = next_buffer
@@ -102,50 +102,59 @@ class state():
     ##--Miscellaneous--##
     #####################
     def trade(self, bot, fake=True):
-        side = self.transaction_type()
-        
-        if side is "hold":
+        if len(bot.historical_prices())==0: 
             return
             
-            
-        if fake is True:
+        side = self.transaction_type()
+        #print("current trade: " + str(side))
+
+        if fake == True:
             available_cash = bot.cash()
             available_crypto = bot.crypto()
-            price = bot.historical_prices()[-1]
+            price = bot.historical_prices()[-1]['price']
             
             if side == "buy":
-                transaction_cash_value = available_cash * self.percent() / 100
+                #print("currently buying {}%".format(self.transaction_percent()))
+                
+                transaction_cash_value = available_cash * self.transaction_percent() / 100
                 fees = transaction_cash_value * .003 #assume that we'll always get charged the .3% buy fee.
                 transaction_crypto_size = transaction_cash_value / price
                 
                 bot._cash = bot.cash() - transaction_cash_value - fees
                 bot._crypto = bot.crypto() + transaction_crypto_size
                 
+                bot.client().buy(price=str(price), size=str(transaction_crypto_size), product_id=bot.currency())
+                
             elif side == "sell":
-                transaction_crypto_size = available_crypto * self.percent() / 100
+                #print("currently selling {}%".format(self.transaction_percent()))
+                transaction_crypto_size = available_crypto * self.transaction_percent() / 100
                 transaction_cash_value = price * transaction_crypto_size
                 
                 bot._cash = bot.cash() + transaction_cash_value
                 bot._crypto = bot.crypto() - transaction_crypto_size
                 
-            bot._price_at_trade.append(price)
-            bot._history_of_portfolio_value.append(bot.cash() + bot.crypto() * price)
+                bot.client().sell(price=str(price), size=str(transaction_crypto_size), product_id=bot.currency())
+                
+            #print("Available cash: " + str(bot.cash()))
+                
+            bot._prices_at_trading.append(price)
+            bot._portfolio_at_trading.append(bot.cash() + bot.crypto() * price)
 
 ################################################################################
 #                           FINITE STATE MACHINE                               #
 ################################################################################
 class FSM():
-    def __init__(self, state_log_file_name="state_log.txt", trade_delay=0.5, state_usage=[1,2,3,4,5,6]):
+    def __init__(self, state_log_file_name="state_log.txt", trade_delay=5, state_usage=[1,2,3,4,5,6]):
         #The state usage field might be slightly confusing. Basically, you just specify which states you want to be active.
         #Probably most common will be [1,2,3,4,5,6] or [3,4,5]. If you choose to not use all the states, you must
         #specify adjacent states. Something like [1,3,4,6] is not allowed.
         #note that all 6 states will still be created, but we will limit access to only the states listed.
-        CS = state(1, "Critical-Sell", transaction_percent=50, next_buffer=3)                  #state 1
-        SS = state(2, "  Strong-Sell", transaction_percent=20, next_buffer=.4, prev_buffer=10) #state 2
-        WS = state(3, "    Weak-Sell", transaction_percent=10, next_buffer=.4, prev_buffer=.4) #state 3
-        H  = state(4, "         Hold", transaction_percent=0 , next_buffer=.4, prev_buffer=.4) #state 4
-        WB = state(5, "     Weak-Buy", transaction_precent=10, next_buffer=.4, prev_buffer=.4) #state 5
-        SB = state(6, "   Strong-Buy", transaction_percent=20, prev_buffer=.4)                 #state 6
+        CS = state(1, "Critical-Sell", transaction_percent=50, next_buffer=.3 , prev_buffer=None) #state 1
+        SS = state(2,   "Strong-Sell", transaction_percent=20, next_buffer=.1, prev_buffer=5  ) #state 2
+        WS = state(3,     "Weak-Sell", transaction_percent=10, next_buffer=.1, prev_buffer=.1  ) #state 3
+        H  = state(4,          "Hold", transaction_percent=0 , next_buffer=.2, prev_buffer=.1  ) #state 4
+        WB = state(5,      "Weak-Buy", transaction_percent=10, next_buffer=.2, prev_buffer=.2  ) #state 5
+        SB = state(6,    "Strong-Buy", transaction_percent=20, next_buffer=None, prev_buffer=.3) #state 6
 
         CS._next = SS
         SS._next = WS
@@ -165,7 +174,9 @@ class FSM():
         self._state_log = open(state_log_file_name, "w")
         self._trade_delay = trade_delay
         self._state_usage = state_usage
-
+        
+        self.print_states()
+        
     #####################
     ##---- GETTERS ----##
     #####################
@@ -190,15 +201,40 @@ class FSM():
     #####################
     ##--Miscellaneous--##
     #####################
+    def print_states(self):
+        state = self.current_state()
+        while state.prev() != None:
+            state = state.prev()
+            
+        print("FSM states:")
+        while state != None:
+            msg = "name: {:20}   transaction percent: {:.2f}".format(state.name(), state.transaction_percent())
+            if state.next_buffer() != None:
+                msg = msg + "   next buffer: {:.2f}".format(state.next_buffer())
+            if state.prev_buffer() != None:
+                msg = msg + "   prev buffer: {:.2f}".format(state.prev_buffer())
+                
+            print(msg)
+            state = state.next()
+    
     def change_state(self, history, should_print_to_log=True, should_print_to_stdout=False):
         #This method should be given an up-to-date history of prices - preferably coming from the websocket.
         
-        if len(history) == 0:
-            return
-
-        last_price = history[-1]
+        moving_average_len = 5
         
-        if last_price == 0: #this should obviously never be zero, but let's avoid an error.
+        if len(history) < moving_average_len:
+            return
+            
+        moving_average = 0
+        for i in range(moving_average_len):
+            i = (i+1) * (-1)
+            moving_average = moving_average + history[i]["price"]
+            
+        moving_average = moving_average/moving_average_len
+
+        last_price = history[-1]['price']
+        
+        if last_price == 0: #this should obviously never be zero, but let's avoid a division by zero error.
             return
 
         cur_state = self.current_state()
@@ -228,43 +264,43 @@ class FSM():
         
         #Decide if the bot should change states
         if cur_state.name() == "Strong-Buy":
-            if last_price < (high - high * cur_state.prev_buffer()/100):
+            if moving_average < (high - high * cur_state.prev_buffer()/100):
                 next_state = cur_state.prev()
 
         elif cur_state.name() == "Weak-Buy":
-            if last_price < (entry - entry * (cur_state.prev_buffer()/100)):
+            if moving_average < (entry - entry * (cur_state.prev_buffer()/100)):
                 next_state = cur_state.prev()
-            elif last_price > (entry + entry * cur_state.next_buffer()/100):
+            elif moving_average > (entry + entry * cur_state.next_buffer()/100):
                 next_state = cur_state.next()
         
         elif cur_state.name() == "Hold":
-            if last_price < (entry - entry * (cur_state.prev_buffer()/100)):
+            if moving_average < (entry - entry * (cur_state.prev_buffer()/100)):
                 next_state = cur_state.prev()
-            elif last_price > (entry + entry * cur_state.next_buffer()/100):
+            elif moving_average > (entry + entry * cur_state.next_buffer()/100):
                 next_state = cur_state.next()
         
         elif cur_state.name() == "Weak-Sell":
-            if last_price < (entry - entry * (cur_state.prev_buffer()/100)):
+            if moving_average < (entry - entry * (cur_state.prev_buffer()/100)):
                 next_state = cur_state.prev()
-            elif last_price > (entry + entry * cur_state.next_buffer()/100):
+            elif moving_average > (entry + entry * cur_state.next_buffer()/100):
                 next_state = cur_state.next()
 
         elif cur_state.name() == "Strong-Sell":
-            if last_price < (low + low * cur_state.prev_buffer()/100):  #only move to critical sell if the price decreases 10% after reaching strong sell state
+            if moving_average < (low + low * cur_state.prev_buffer()/100):
                 next_state = cur_state.prev()
-            elif last_price > (low + low * cur_state.next_buffer()/100):
+            elif moving_average > (low + low * cur_state.next_buffer()/100):
                 next_state = cur_state.next()
 
         elif cur_state.name() == "Critical-Sell":
-            if last_price > (low + low * cur_state.next_buffer()/100):
+            if moving_average > (low + low * cur_state.next_buffer()/100):
                 next_state = cur_state.next()
 
         else:
-            print("ERROR: bot is at unknown state. Please check the logs.")
+            print("ERROR: bot is at unknown state. Please check the logs." + "  ->  " + cur_state.name())
             sys.exit(1)
         
         if next_state.id() in self.state_usage():
-            percent_change = (last_price - cur_state.entry())/cur_state.entry()
+            percent_change = ((last_price - cur_state.entry())/cur_state.entry())*100
             message = "{} -> {}\tentry price: {:.2f}\tpercent change:{:.3f}%".format(cur_state.name(), next_state.name(), cur_state.entry(), percent_change)
             
             if should_print_to_log:
@@ -285,7 +321,6 @@ class FSM():
                 self.current_state().trade(robot)
                 time.sleep(self.trade_delay())
             self._state_log.close()
-            robot.create_portfolio()
 
         self._trade_thread = Thread(target=_trade_routine)
         self._trade_thread.start()

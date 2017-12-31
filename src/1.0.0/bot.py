@@ -21,9 +21,8 @@
     default to trading bitocin if no other currency is given.
 """
 
-
-import gdax
 import sys
+import gdax
 import time
 from threading import Thread
 import plotly
@@ -37,19 +36,19 @@ from fsm import *
 #                                   Bot                                        #
 ################################################################################
 class Bot():
-    def __init__(self, webSocket, name="Bot", currency="BTC-USD", transition_buffer=0.4):
+    def __init__(self, name="Bot", currency="BTC-USD", transition_buffer=0.4, webSocket=None):
         
         #obtain credentials, authenticate GDAX client and websocket, and then over-write credentials
         self._passphrase = ""
         self._secret = ""
         self._key = ""
-        self.get_credentials()      #fills in passphrase, secret, and key
+        self.get_credentials(credentials_file="../../credentials.txt")      #fills in passphrase, secret, and key
         self._client = gdax.AuthenticatedClient(self._key, self._secret, self._passphrase)
         self._socket = webSocket
         self.scramble_credentials() #over-writes the credentials with new characters
         
         self._name = name
-        self._fsm = FSM(transition_buffer)
+        self._fsm = FSM()
         self._currency = currency
         self._running = False
         
@@ -58,7 +57,7 @@ class Bot():
         self._prices_at_trading = []    #keeps the price history of the crypto at the trading points
         self._portfolio_at_trading = [] #keeps the value history of the bot's portfolio 
         self._crypto = 0                #set an initial value for fake crypto
-        self._cash = 14000              #set an initial fake cash value
+        self._cash = float(self.client().get_product_ticker(product_id=self.currency())["price"])  #set an initial fake cash value
 
         
 
@@ -67,6 +66,9 @@ class Bot():
     #####################
     def name(self):
         return self._name
+        
+    def currency(self):
+        return self._currency
         
     def socket(self):
         return self._socket
@@ -81,7 +83,7 @@ class Bot():
         return len(self._socket._history) == self._socket._history_size
         
     def historical_prices(self):
-        return self._socket._history
+        return self._socket._history[self.currency()]
         
     def cash(self):
         return self._cash
@@ -95,22 +97,34 @@ class Bot():
     #returns the amount of crypto and the amount of cash that is available to the bot
     #Note, this method retrieves data directly from GDAX and is not to be confused 
     #with the cash and crypto fields of the bot.
-    def get_balances(self):
+    def get_balances(self, all_currencies=False):
         accounts = self.client().get_accounts()
         for account in accounts:
             currency = account["currency"]
             amount = float(account["balance"])
-            if currency != "USD" and currency in self.currency():
-                crypto = amount
+            if currency != "USD" and currency == "BTC":
+                BTC = amount
+            if currency != "USD" and currency == "BCH":
+                BCH = amount
+            if currency != "USD" and currency == "ETH":
+                ETH = amount
+            if currency != "USD" and currency == "LTC":
+                LTC = amount
             if currency == "USD":
                 USD = amount
-        return crypto, USD
+            if currency == self.currency():
+                crypto = amount
+                
+        if all_currencies == False:
+            return USD, crypto
+        else:
+            return USD, BTC, BCH, ETH, LTC
 
     #Obtains GDAX credentials from a file and stores them as fields of the bot.
     #they will only be stored until everything has been verified, and then should 
     #be cleared by calling the self.scramble_credentials() method
     def get_credentials(self, credentials_file=None):
-        if crredentials_file is None:
+        if credentials_file is None:
             yay = 0
             while yay == 0:
                 file_loc = input("Drag and drop credential file here, or type path: ")
@@ -139,9 +153,11 @@ class Bot():
 
     #Starts the robot's listening and trading sequence
     def start(self, should_print=True):
+        self.create_portfolio()
         self._running = True
         self._socket.start()
-        #self._fsm.run(self)
+        self._fsm.run(self)
+        
         
         if should_print == True:
             print(self.name()+" has been started")
@@ -151,8 +167,12 @@ class Bot():
         self._running = False           #shut down client
         self._fsm._trade_thread.join()  #close trading thread
         self.socket().close()           #shut down web socket.
+        self.plot_session()
+        #self.print_price_history()
+        self.print_trade_history()
+        self.create_portfolio()
         
-        if should_print == False:
+        if should_print == True:
             print(self.name()+" has been stopped")
 
     #This method just generates a portfolio donut chart using plotly. 
@@ -164,7 +184,7 @@ class Bot():
             if "USD" in p_id:
                 prices[p_id] = float(self.client().get_product_ticker(product_id=p_id)["price"])
 
-        USD, BTC_amount, BCH_amount, ETH_amount, LTC_amount = self.get_balances()
+        USD, BTC_amount, BCH_amount, ETH_amount, LTC_amount = self.get_balances(all_currencies=True)
         BTC_worth, BCH_worth, ETH_worth, LTC_worth = (BTC_amount * prices["BTC-USD"]), (BCH_amount * prices["BCH-USD"]), (ETH_amount * prices["ETH-USD"]), (LTC_amount * prices["LTC-USD"]),
 
         net_worth = USD + BTC_worth + BCH_worth + ETH_worth + LTC_worth
@@ -202,12 +222,27 @@ class Bot():
             if "USD" in p_id:
                 print(p_id + " : " + str(self.client().get_product_ticker(product_id=p_id)["price"]))
                 
-    #This method is mostly meant for debug purposes to see how the bot is doing against the crypto itself.
-    #It relies on the _prices_at_trading and _profolio_at_trading lists being populated.
-    #Note, this method may not be called if debug information is not gathered or the bot was not run. 
+    def print_price_history(self):
+        #print all of th prices that were recorded in the history of the bot.
+        history = self.historical_prices()
+        for entry in history:
+            print("sequence: {:d}   price: {:6.2f}   side: {}".format(entry['sequence'], entry['price'], entry['side']))
+                
+    def print_trade_history(self):
+        prices = self._prices_at_trading
+        portfolio = self._portfolio_at_trading
+        
+        assert (len(prices) == len(portfolio)), "OOPS: Somehow the trading history arrays were not built correctly."
+        
+        for i in range(len(prices)):
+            print("portfolio: {:.2f}    price: {:.2f}".format(portfolio[i], prices[i]))
+    
     def plot_session(self):
+        #This method is mostly meant for debug purposes to see how the bot is doing against the crypto itself.
+        #It relies on the _prices_at_trading and _profolio_at_trading lists being populated.
+        #Note, this method may not be called if debug information is not gathered or the bot was not run. 
         x_axis = []
-        for i in range(len(self._price_at_trade)):
+        for i in range(len(self._prices_at_trading)):
             x_axis.append(i)
             
         trace1 = go.Scatter(

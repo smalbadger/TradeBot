@@ -1,6 +1,9 @@
 from bot import *
 
-def test_1():
+def four_bot_competition():
+    key=None
+    secret=None
+    passphrase=None
 
     currency = "BTC-USD"
     socket = BotSocket(product=currency, key=key, secret=secret, passphrase=passphrase)
@@ -55,19 +58,27 @@ def test_1():
     
     print("Bitcoin gained " + str(round((BitBot1.historical_prices()[0] - BitBot1.historical_prices()[-1])*100/BitBot1.historical_prices()[0],2)) + "%")
 
-def main():
+def single_bot_run():
+    passphrase= ""
+    key=        ""
+    secret=     ""
 
+    #initialize a websocket that watches all currencies
     currency = ["BTC-USD", "LTC-USD", "ETH-USD", "BCH-USD"]
-    socket = BotSocket(product=currency, channels=["matches"], key=key, secret=secret, passphrase=passphrase)
-    socket.start()
-    
-    '''
-    BitBot = Bot("BitBot", "BTC-USD", .3, socket)
+    socket = BotSocket(product=currency, key=key, secret=secret, passphrase=passphrase, channels=["matches"])
+    BitBot = Bot("BitBot", "LTC-USD", .3, socket)
+    initial_value1 = BitBot.cash()
     BitBot.start()
-    
-    time.sleep(60)
-    
+    time.sleep(60*15)
     BitBot.stop()
-    '''
+    final_value1 = BitBot.cash() + BitBot.crypto() * (BitBot.historical_prices()[-1]['price'])
+    cash_gain1 = round(final_value1 - initial_value1, 2)
+    percent_gain1 = round((final_value1 - initial_value1) * 100 / initial_value1, 2)
+    print("BitBot1 made $" + str(cash_gain1) + " (" + str(percent_gain1) + "%)")
+
+
+def main():
+    single_bot_run()
+
     
 main()
