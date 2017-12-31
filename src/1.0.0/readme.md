@@ -4,46 +4,36 @@ that this document is best viewed in a text editor in full screen mode as it con
 
 ## Bot
                             
-           /\                   This is the Bot object. It is the highest level of looking at the trading program,       
-           \/               The user will only interact with this class through a GUI. Each Bot will only be able 
-           ||               to trade a single cryptocurrency, so the user will be able to start/stop each bot. Right
-           ||               now, GDAX only supports Bitcoin, Bitcoin Cash, Ethereum, and Litecoin, so only 4 bots
-          _||_              can run at a time. Let's go over the components of the Bot:
+           /\                   This is the Bot object. It is the highest level of looking at the trading program, The user will      
+           \/               only interact with this class through a GUI. Each Bot will only be able to trade a single cryptocurrency,
+           ||               so the user will be able to start/stop each bot. Right now, GDAX only supports Bitcoin, Bitcoin Cash, Ethereum,
+          _||_              and Litecoin, so only 4 bots can run at a time. Let's go over the components of the Bot:
          /    \
-________/______\________        + Passphrase, Secret, Key - These are credentials that should be stored in a file
-|                      |          to be read by the program. The default directory to place it is the TradBot folder, 
-|                      |          but it can be stored anywhere.
+________/______\________        + Passphrase, Secret, Key - These are credentials that should be stored in a file to be read by the program.
+|                      |          The default directory to place it is the TradBot folder, but it can be stored anywhere.
 |    _____    _____    |
-|    |   |    |   |    |        + Client - This is the AuthenticatedClient object that is used to interact with your 
-|    |   |    |   |    |          GDAX account. It uses the credentials above to log into your account. This is what
-|    -----    -----    |          allows the bot to see account balances, place orders, and do other misellaneous 
-|                      |          things on behalf of you.
+|    |   |    |   |    |        + Client - This is the AuthenticatedClient object that is used to interact with your GDAX account. It uses 
+|    |   |    |   |    |          the credentials above to log into your account. This is what allows the bot to see account balances, place
+|    -----    -----    |          orders, and do other misellaneous things on behalf of you. 
 |                      |
-|      ___________     |        + BotSocket - This is what gives us constant information about product prices, volume, 
-|     /_|_|_|_|_|_\    |          trades being placed and other related things. Once we subscribe, we get constant
-|                      |          information and place it into the appropriate history list.
+|      ___________     |        + BotSocket - This is what gives us constant information about product prices, volume, trades being placed and
+|     /_|_|_|_|_|_\    |          other related things. Once we subscribe, we get constant information and place it into the appropriate history list
 ------------------------
-        |       |               + FSM - This is the finite state machine that we're using to trade. It contains six
-                                  State objects. Each State Object has a trade associated with it, and we always
-                                  decide if we want to change states, then trade, then wait a set amount of time and 
-                                  repeat.
+        |       |               + FSM - This is the finite state machine that we're using to trade. It contains six State objects. Each Object has a
+                                  trade associated with it, and we always decide if we want to change states, then trade, then wait for a set
+                                  amount of time and repeat. 
                                   
-                                + Name - The name of the Bot can be anything you want it to be. Each Bot should have a
-                                  different name as a unique identifier.
+                                + Name - The name of the Bot can be anything you want it to be. Each Bot should have a different name as a unique identifier.
                                   
-                                + currency - Each Bot can only trade one cryptocurrency, so this is the field that keeps 
-                                  track of the currency that the bot can trade. The field should be a string such as 
-                                  "BTC-USD", "BCH-USD", "LTC-USD", or "ETH-USD"
+                                + currency - Each Bot can only trade one cryptocurrency, so this is the field that keeps track of the currency that the bot 
+                                  can trade. The field should be a string such as "BTC-USD", "BCH-USD", "LTC-USD", or "ETH-USD".
                                   
-    It is important to note that each Bot requires its own thread to run on. This is to ensure the fastest possible trading.
-To determine if you have enough threads to run another Bot, you need to see how many threads your processor has. To do this,
-try finding system information, or system preferences on your computer, and google your exact processor model. You should see
-The number of cores and threads on your processor. To find how many bots you can spawn do the following calculation:
-
-                   Bots = (cores * threads) - 1
+    It is important to note that each Bot requires its own thread to run on. This is to ensure the fastest possible trading. To determine if you have enough 
+threads to run another Bot, you need to see how many threads your processor has. To do this, try finding system information, or system preferences on your 
+computer, and google your exact processor model. You should see the number of cores and threads on your processor. To find how many bots you can spawn do 
+the following calculation: Bots = (cores * threads) - 1
                    
-We are subtracting one because the BotSocket also requires its own thread. Because of this, we should have all the Bot
-instantiations share a single websocket.
+We are subtracting one because the BotSocket also requires its own thread. Because of this, we should have all the Bot instantiations share a single websocket.
 
 
 ## BotSocket
@@ -115,6 +105,87 @@ instantiations share a single websocket.
      / | \        / | \     type of client is the AuthorizedClient. This class requires you to have an API key, passphrase, and secret, and
      \ |  \--8---/  | |     allows you to interact with your account through your application. depending on the priviledges that you give your API
       \|            | |     key, you can make trades, cancel orders, get account balances, and do anything that the PublicClient can do.
+       w            | w
+       /\           /\
+      /  \         /  \
+     /    \       /    \
+
+
+
+           /\           
+           \/           
+           ||           
+          _||_          
+         /    \
+________/______\________
+|                      |
+|                      |
+|    _____    _____    |
+|    |   |    |   |    |
+|    |   |    |   |    |
+|    -----    -----    |
+|                      |
+|                      |
+|      ___________     |
+|     /_|_|_|_|_|_\    |
+|                      |
+------------------------
+        |       |     
+
+
+   /\     /|      /\  
+  /  \   / |     //\\
+  |  |  /  ------||||
+  |  |  \  ______||||
+  \  /   \ |     \\//
+   \/     \|      \/
+
+
+    /----\
+    | CS |
+    \----/
+     ^  |
+     |  | 
+     |  v 
+    /----\
+    | SS |
+    \----/
+     ^  | 
+     |  |
+     |  v 
+    /----\
+    | WS |
+    \----/
+     ^  |
+     |  | 
+     |  v 
+    /----\
+    |HOLD|
+    \----/
+     ^  | 
+     |  | 
+     |  v 
+    /----\
+    | WB |
+    \----/
+     ^  | 
+     |  | 
+     |  v 
+    /----\
+    | SB |
+    \----/
+
+
+    /-----\              
+    |     |      /-----\ 
+    |   oo|      |oo   | 
+    |    _|      |_    |
+    \_____/      \_____/ 
+       |            |    
+      /|\          /|\   
+     / | \        / | \  
+     \ |  \--8---/  | |  
+      \|            | |  
        w            | w
        /\           /\
       /  \         /  \
