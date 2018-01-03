@@ -1,10 +1,21 @@
 # TradeBot
-Welcome to the TradeBot Repository!
+Welcome to the TradeBot Repository! 
+
+#### TODO:
++ finish fake-trade functionality
++ plot our fake trades to see if our algorithm works or needs to be improved
++ create functionality to make real trades
++ lots and lots of data analysis and graph making
++ use machine learning type stuff to predict behavior from order book and optimize transaction percentage amounts and state transition buffers.
+
++ figure out how to use tkinter - we'll use this to make the GUI unless someone has a better idea
++ figure out how to put a plotly diagram in the GUI
+
 
 ## Git Standards for this Repository
 Please refer to [this guide](rogerdudler.github.io/git-guide/ "Git - No Deep Shit") to learn how to git gud.
 
-For this repository, we will be following some strict git rules.
+For this repository, we will be following some git rules.
 + Each collaborator will create their own branch and work strictly in their branch. (mostly because I don't understand git and I'm paranoid)
 + Pay attention to what you push. This repository deals with sensitive information potentially, so don't push your API keys.
 
@@ -13,7 +24,7 @@ For this repository, we will be following some strict git rules.
 + pull          - git pull origin <your_branch>
 + add           - git add .
 + commit        - git commit -m "<your_commit_message>"
-+ push          - git push origin <your_branch>
++ push          - git push origin HEAD:<your_branch>
 
 ## Privacy policy
 If you have access to this repository, please do not give access to anyone else without unanimous consent from all contributors.
