@@ -1,0 +1,74 @@
+Created new window in existing browser session.
+FSM states:
+name: Critical-Sell          transaction percent: 50.00   next buffer: 0.30
+name: Strong-Sell            transaction percent: 20.00   next buffer: 0.10   prev buffer: 5.00
+name: Weak-Sell              transaction percent: 10.00   next buffer: 0.10   prev buffer: 0.10
+name: Hold                   transaction percent: 0.00   next buffer: 0.20   prev buffer: 0.10
+name: Weak-Buy               transaction percent: 10.00   next buffer: 0.20   prev buffer: 0.20
+name: Strong-Buy             transaction percent: 20.00   prev buffer: 0.30
+-- Starting Bot Socket --
+BitBot has been started
+LTC-USD: 247.34	buy
+BTC-USD: 14616.38	sell
+current trade: hold
+Available cash: 14621.97
+LTC-USD: 247.34	buy
+LTC-USD: 247.3	buy
+LTC-USD: 247.29	buy
+LTC-USD: 247.29	buy
+ETH-USD: 749.19	buy
+current trade: hold
+Available cash: 14621.97
+current trade: hold
+Available cash: 14621.97
+ETH-USD: 749.2	sell
+BTC-USD: 14616.38	sell
+BTC-USD: 14616.38	sell
+BTC-USD: 14616.38	sell
+BTC-USD: 14616.38	sell
+BTC-USD: 14616.38	sell
+current trade: hold
+Available cash: 14621.97
+current trade: hold
+Available cash: 14621.97
+BCH-USD: 2680.99	sell
+BCH-USD: 2680.99	sell
+BCH-USD: 2680.99	sell
+BCH-USD: 2680.99	sell
+BCH-USD: 2680.99	sell
+BCH-USD: 2681.0	sell
+BCH-USD: 2681.0	sell
+BCH-USD: 2681.01	sell
+BCH-USD: 2681.01	sell
+BCH-USD: 2681.01	sell
+BCH-USD: 2681.01	sell
+BCH-USD: 2681.01	sell
+BCH-USD: 2681.01	sell
+BCH-USD: 2681.01	sell
+BCH-USD: 2681.01	sell
+current trade: hold
+Available cash: 14621.97
+current trade: hold
+Available cash: 14621.97
+current trade: hold
+Available cash: 14621.97
+current trade: hold
+Available cash: 14621.97
+BTC-USD: 14616.38	sell
+current trade: hold
+Available cash: 14621.97
+current trade: hold
+Available cash: 14621.97
+ETH-USD: 749.2	sell
+current trade: hold
+Available cash: 14621.97
+ETH-USD: 749.2	sell
+BTC-USD: 14616.38	sell
+current trade: hold
+Available cash: 14621.97
+current trade: hold
+Available cash: 14621.97
+current trade: hold
+Available cash: 14621.97
+current trade: hold
+Available cash: 14621.97
