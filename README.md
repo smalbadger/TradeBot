@@ -2,11 +2,7 @@
 Welcome to the TradeBot Repository! 
 
 #### TODO:
-+ finish fake-trade functionality
-+ plot our fake trades to see if our algorithm works or needs to be improved
-+ create functionality to make real trades
-+ lots and lots of data analysis and graph making
-+ use machine learning type stuff to predict behavior from order book and optimize transaction percentage amounts and state transition buffers.
++ watch videos on Udemy. I bought some classes that I hope are good. We need to find out how to make this thing profitable.
 
 + figure out how to use tkinter - we'll use this to make the GUI unless someone has a better idea
 + figure out how to put a plotly diagram in the GUI
