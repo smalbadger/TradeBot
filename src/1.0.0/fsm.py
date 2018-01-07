@@ -101,17 +101,22 @@ class state():
     #####################
     ##--Miscellaneous--##
     #####################
-    def trade(self, bot, fake=True):
-        if len(bot.historical_prices())==0: 
+    def trade(self, bot, fake=True, portfolio=None, prices=None, historical_prices=None):
+        if historical_prices == None:
+            historical_prices = bot.historical_prices()
+            
+        if len(historical_prices)==0:
             return
             
         side = self.transaction_type()
-        #print("current trade: " + str(side))
-
+        
+        order_result = "None"
+        
+        price = historical_prices[-1]['price']
+        time = historical_prices[-1]["time"]
         if fake == True:
             available_cash = bot.cash()
             available_crypto = bot.crypto()
-            price = bot.historical_prices()[-1]['price']
             
             if side == "buy":
                 #print("currently buying {}%".format(self.transaction_percent()))
@@ -120,10 +125,10 @@ class state():
                 fees = transaction_cash_value * .003 #assume that we'll always get charged the .3% buy fee.
                 transaction_crypto_size = transaction_cash_value / price
                 
-                bot._cash = bot.cash() - transaction_cash_value - fees
+                bot._cash = bot.cash() - transaction_cash_value# - fees
                 bot._crypto = bot.crypto() + transaction_crypto_size
                 
-                bot.client().buy(price=str(price), size=str(transaction_crypto_size), product_id=bot.currency())
+                order_result = bot.client().buy(size=str(transaction_crypto_size), product_id=bot.currency(), type="market")
                 
             elif side == "sell":
                 #print("currently selling {}%".format(self.transaction_percent()))
@@ -133,13 +138,45 @@ class state():
                 bot._cash = bot.cash() + transaction_cash_value
                 bot._crypto = bot.crypto() - transaction_crypto_size
                 
-                bot.client().sell(price=str(price), size=str(transaction_crypto_size), product_id=bot.currency())
+                order_result = bot.client().sell(size=str(transaction_crypto_size), product_id=bot.currency(), type="market")
                 
             #print("Available cash: " + str(bot.cash()))
+            
+            prices.append({"value": price, "time": time})
+            portfolio.append({"value": bot.cash() + bot.crypto() * price, "state": self.id()-1, "time": time})
+            
+        else:
+            available_cash, available_crypto = bot.get_balances()
+                        
+            if side == "buy":
+                #print("currently buying {}%".format(self.transaction_percent()))
                 
-            bot._prices_at_trading.append(price)
-            bot._portfolio_at_trading.append(bot.cash() + bot.crypto() * price)
-
+                transaction_cash_value = available_cash * self.transaction_percent() / 100
+                fees = transaction_cash_value * .003 #assume that we'll always get charged the .3% buy fee.
+                transaction_crypto_size = round(transaction_cash_value / price,6)
+                
+                order_result = bot.client().buy(size=str(transaction_crypto_size), product_id=bot.currency(), type="market")
+                
+            elif side == "sell":
+                #print("currently selling {}%".format(self.transaction_percent()))
+                transaction_crypto_size = round(available_crypto * self.transaction_percent() / 100, 6)
+                transaction_cash_value = price * transaction_crypto_size
+                
+                order_result = bot.client().sell(size=str(transaction_crypto_size), product_id=bot.currency(), type="market")
+                
+            #print("Available cash: " + str(bot.cash()))
+            
+            prices.append({"value": price, "time": time})
+            portfolio.append({"value": available_cash + available_crypto * price, "state": self.id()-1, "time": time})
+            
+            fills=0
+            for page in bot.client().get_fills():
+                for fill in page:
+                    fills+=1
+            if "message" in order_result:
+                print("attempted {} -> {}".format(side, order_result["message"]))
+            print("orders: {}".format(bot.client().get_orders()))
+            print("fills:  {}".format(fills))
 ################################################################################
 #                           FINITE STATE MACHINE                               #
 ################################################################################
@@ -149,12 +186,12 @@ class FSM():
         #Probably most common will be [1,2,3,4,5,6] or [3,4,5]. If you choose to not use all the states, you must
         #specify adjacent states. Something like [1,3,4,6] is not allowed.
         #note that all 6 states will still be created, but we will limit access to only the states listed.
-        CS = state(1, "Critical-Sell", transaction_percent=50, next_buffer=.3 , prev_buffer=None) #state 1
-        SS = state(2,   "Strong-Sell", transaction_percent=20, next_buffer=.1, prev_buffer=5  ) #state 2
-        WS = state(3,     "Weak-Sell", transaction_percent=10, next_buffer=.1, prev_buffer=.1  ) #state 3
-        H  = state(4,          "Hold", transaction_percent=0 , next_buffer=.2, prev_buffer=.1  ) #state 4
-        WB = state(5,      "Weak-Buy", transaction_percent=10, next_buffer=.2, prev_buffer=.2  ) #state 5
-        SB = state(6,    "Strong-Buy", transaction_percent=20, next_buffer=None, prev_buffer=.3) #state 6
+        CS = state(1, "Critical-Sell", transaction_percent=80, next_buffer=.1  , prev_buffer=None) #state 1
+        SS = state(2,   "Strong-Sell", transaction_percent=60, next_buffer=.1  , prev_buffer=5   ) #state 2
+        WS = state(3,     "Weak-Sell", transaction_percent=40, next_buffer=.1  , prev_buffer=.3  ) #state 3
+        H  = state(4,          "Hold", transaction_percent=0 , next_buffer=.1  , prev_buffer=.3  ) #state 4
+        WB = state(5,      "Weak-Buy", transaction_percent=40, next_buffer=.1  , prev_buffer=.3  ) #state 5
+        SB = state(6,    "Strong-Buy", transaction_percent=60, next_buffer=None, prev_buffer=.3  ) #state 6
 
         CS._next = SS
         SS._next = WS
@@ -220,7 +257,7 @@ class FSM():
     def change_state(self, history, should_print_to_log=True, should_print_to_stdout=False):
         #This method should be given an up-to-date history of prices - preferably coming from the websocket.
         
-        moving_average_len = 5
+        moving_average_len = 1
         
         if len(history) < moving_average_len:
             return
@@ -268,8 +305,10 @@ class FSM():
                 next_state = cur_state.prev()
 
         elif cur_state.name() == "Weak-Buy":
-            if moving_average < (entry - entry * (cur_state.prev_buffer()/100)):
+            if moving_average < (high - high * cur_state.prev_buffer()/100):
                 next_state = cur_state.prev()
+            #if moving_average < (entry - entry * (cur_state.prev_buffer()/100)):
+            #    next_state = cur_state.prev()
             elif moving_average > (entry + entry * cur_state.next_buffer()/100):
                 next_state = cur_state.next()
         
@@ -282,11 +321,13 @@ class FSM():
         elif cur_state.name() == "Weak-Sell":
             if moving_average < (entry - entry * (cur_state.prev_buffer()/100)):
                 next_state = cur_state.prev()
-            elif moving_average > (entry + entry * cur_state.next_buffer()/100):
+            #elif moving_average > (entry + entry * cur_state.next_buffer()/100):
+            #    next_state = cur_state.next()
+            elif moving_average > (low + low * cur_state.next_buffer()/100):
                 next_state = cur_state.next()
 
         elif cur_state.name() == "Strong-Sell":
-            if moving_average < (low + low * cur_state.prev_buffer()/100):
+            if moving_average < (entry - entry * cur_state.prev_buffer()/100):
                 next_state = cur_state.prev()
             elif moving_average > (low + low * cur_state.next_buffer()/100):
                 next_state = cur_state.next()
@@ -312,15 +353,74 @@ class FSM():
                 next_state._entry = last_price
                 
             self._current_state = next_state
-        
-        
-    def run(self, robot):
+            
+    def update_fsm_values(self, weak_percent, strong_percent, critical_percent, prev_buffer, next_buffer):
+        state = self.current_state()
+        while state.prev() != None:
+            state = state.prev()
+            
+        while state != None:
+            if state.prev_buffer() != None:
+                state._prev_buffer = prev_buffer
+            if state.next_buffer() != None:
+                state._next_buffer = next_buffer
+            if "Weak" in state.name():
+                state._transaction_percent = weak_percent
+            elif "Strong" in state.name():
+                state._transaction_percent = strong_percent
+            elif "Critical" in state.name():
+                state._transaction_percent = critical_percent
+            state = state.next()
+    
+    def calibrate(self, robot):
+        #this method should be called after the bot has performed fake trades. It will go through a range of values and try to find the best combination.
+        portfolio = self._calibration_portfolio_list
+        prices = self._calibration_prices_list 
+        calibration_file = open("calibration_file.txt", "w")
+        best_portfolio = 0
+        print("history length for calibration: {}".format(len(robot.historical_prices())))
+        for weak_percent in [5, 15]:
+            for strong_percent in [25, 50]:
+                for critical_percent in [60, 90]:
+                    for prev_buffer in [.2, .9]:
+                        for next_buffer in [.2, .9]:
+                            # redo trade routine
+                            calib_portfolio = []
+                            calib_prices = []
+                            
+                            self.update_fsm_values(weak_percent, strong_percent, critical_percent, prev_buffer, next_buffer)
+                            
+                            for i in prices:
+                                self.change_state([{"price": i["value"]}])
+                                self.current_state().trade(robot, fake=True, portfolio=calib_portfolio, prices=calib_prices, historical_prices=[{"price": i["value"], "time": i["time"]}])
+                            
+                            if calib_portfolio[-1]["value"] > best_portfolio:
+                                best_porfolio = calib_portfolio[-1]["value"]
+                                best_configuration = {"weak": weak_percent, "strong": strong_percent, "critical": critical_percent, "prev_buffer": prev_buffer, "next_buffer": next_buffer}
+                                calibration_file.write("best configuration: {}   ->  {}\n".format(best_configuration, best_portfolio))
+                                print("best configuration: {}   ->  {}\n".format(best_configuration, best_portfolio))
+                                
+        self.update_fsm_values(best_configuration["weak"], best_configuration["strong"], best_configuration["critical"], best_configuration["prev_buffer"], best_configuration["next_buffer"])
+                                                           
+    def run(self, robot, calibration=False):
         def _trade_routine():
+            if calibration:
+                self._calibration_portfolio_list = []
+                self._calibration_prices_list = []
+                portfolio = self._calibration_portfolio_list
+                prices = self._calibration_prices_list
+            else:
+                robot._portfolio_at_trading = []
+                robot._prices_at_trading = []
+                portfolio = robot._portfolio_at_trading
+                prices = robot._prices_at_trading
+                
             while robot._running:
                 self.change_state(robot.historical_prices())
-                self.current_state().trade(robot)
+                self.current_state().trade(robot, fake=True, portfolio=portfolio, prices=prices)
                 time.sleep(self.trade_delay())
-            self._state_log.close()
+                
+            
 
         self._trade_thread = Thread(target=_trade_routine)
         self._trade_thread.start()

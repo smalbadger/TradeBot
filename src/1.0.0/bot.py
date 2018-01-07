@@ -48,9 +48,10 @@ class Bot():
         self.scramble_credentials() #over-writes the credentials with new characters
         
         self._name = name
-        self._fsm = FSM()
+        self._fsm = FSM(state_usage=[3,4,5])
         self._currency = currency
         self._running = False
+        self._calibration = False
         
         # These fields will only be used for fake trading analysis. Each bot will keep a portfolio
         # and at the end of program execution, we'll plot the bots against each other 
@@ -67,6 +68,9 @@ class Bot():
     def name(self):
         return self._name
         
+    def calibration(self):
+        return self._calibration    
+        
     def currency(self):
         return self._currency
         
@@ -82,8 +86,18 @@ class Bot():
     def history_is_full(self):
         return len(self._socket._history) == self._socket._history_size
         
-    def historical_prices(self):
-        return self._socket._history[self.currency()]
+    def historical_prices(self, until_time=None):
+        if until_time == None:
+            return self._socket._history[self.currency()]
+        else:
+            history = []
+            
+            for i in self._socket._history[self.currency()]:
+                if i["time"] != until_time:
+                    history.append(i) 
+                
+            history.append(i) 
+            return history
         
     def cash(self):
         return self._cash
@@ -92,6 +106,7 @@ class Bot():
         return self._crypto
         
     def running(self):
+        self._running = self._running and not self.socket().stop
         return self._running
         
     #returns the amount of crypto and the amount of cash that is available to the bot
@@ -112,7 +127,7 @@ class Bot():
                 LTC = amount
             if currency == "USD":
                 USD = amount
-            if currency == self.currency():
+            if currency in self.currency():
                 crypto = amount
                 
         if all_currencies == False:
@@ -152,11 +167,13 @@ class Bot():
         self._secret = "Secret? What's that? I don't know what an API Secret is. Sorry, I think you got me confused with someone else"
 
     #Starts the robot's listening and trading sequence
-    def start(self, should_print=True):
+    def start(self, should_print=True, calibration=False):
         self.create_portfolio()
         self._running = True
+        self._calibration = calibration
+        #if self.socket().stop: #only start the socket once
         self._socket.start()
-        self._fsm.run(self)
+        self._fsm.run(self, calibration=calibration)
         
         
         if should_print == True:
@@ -167,10 +184,11 @@ class Bot():
         self._running = False           #shut down client
         self._fsm._trade_thread.join()  #close trading thread
         self.socket().close()           #shut down web socket.
-        self.plot_session()
-        #self.print_price_history()
-        self.print_trade_history()
-        self.create_portfolio()
+        
+        if not self._calibration:
+            #self.print_trade_history()
+            self.create_portfolio()
+            self.plot_session()
         
         if should_print == True:
             print(self.name()+" has been stopped")
@@ -240,25 +258,62 @@ class Bot():
     def plot_session(self):
         #This method is mostly meant for debug purposes to see how the bot is doing against the crypto itself.
         #It relies on the _prices_at_trading and _profolio_at_trading lists being populated.
-        #Note, this method may not be called if debug information is not gathered or the bot was not run. 
+        #Note, this method may not be called if debug information is not gathered or the bot was not run.
+        
+        assert(len(self._prices_at_trading) != 0 and len(self._portfolio_at_trading)!=0)
+        
+        if len(self._prices_at_trading) != len(self._portfolio_at_trading):
+            print("\n\nWARNING! price and portfolio histories are not the same length.")
+            print("prices    length: {}".format(len(self._prices_at_trading)))
+            print("portfolio length: {}".format(len(self._portfolio_at_trading)))
+            print("Cannot generate session performance analysis.")
+            print("\n\n")
+            
+                    
+        #color_spectrum = cl.to_html( cl.scales['7']['div']['RdYlGn']
+        #color_spectrum = []
+        base_price = self._prices_at_trading[0]["value"]
+        base_portfolio_value = self._portfolio_at_trading[0]["value"]
+        
         x_axis = []
+        portfolio_value_at_trading = self._portfolio_at_trading[:]
+        portfolio_color_at_trading = self._portfolio_at_trading[:] 
+        prices_at_trading = self._prices_at_trading[:]
+        
+        difference = []
         for i in range(len(self._prices_at_trading)):
             x_axis.append(i)
+            portfolio_value_at_trading[i] = ((self._portfolio_at_trading[i]["value"] / base_portfolio_value) -1 ) * 100
+            prices_at_trading[i] = ((self._prices_at_trading[i]["value"] / base_price) -1 )* 100
+            
+            difference.append(portfolio_value_at_trading[i] - prices_at_trading[i])
+            
+            #if self._portfolio_value_at_trading[i]["state"] != 0:
+            #    portfolio_color_at_trading[i] = self._portfolio_value_at_trading[i]["state"] + 1
+            #else:
+            #    portfolio_color_at_trading[i] = self._portfolio_value_at_trading[i]["state"]
+            
             
         trace1 = go.Scatter(
             x = x_axis,
-            y = self._prices_at_trading,
-            name = 'crypto price',
+            y = prices_at_trading,
+            name = 'product',
             connectgaps = True
         )
         trace2 = go.Scatter(
             x = x_axis,
-            y = self._portfolio_at_trading,
-            name = 'portfolio value',
+            y = portfolio_value_at_trading,
+            name = 'portfolio',
+            connectgaps = True
+        )
+        trace3 = go.Scatter(
+            x = x_axis,
+            y = difference,
+            name = 'difference',
             connectgaps = True
         )
 
-        data = [trace1, trace2]
+        data = [trace1, trace2, trace3]
 
         fig = dict(data=data)
         py.plot(fig, filename=(self.name()+"_results"))

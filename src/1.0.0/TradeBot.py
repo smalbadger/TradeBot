@@ -67,14 +67,23 @@ def single_bot_run():
     currency = ["BTC-USD", "LTC-USD", "ETH-USD", "BCH-USD"]
     socket = BotSocket(product=currency, key=key, secret=secret, passphrase=passphrase, channels=["matches"])
     BitBot = Bot("BitBot", "LTC-USD", .3, socket)
-    initial_value1 = BitBot.cash()
-    BitBot.start()
-    time.sleep(60*15)
+    
+    #calibration_time = int(input("How many minutes would you like to calibrate the bot for?    "))
+    run_time = int(input("How many minutes would you like to run the bot for?    "))
+    
+    '''
+    BitBot.start(calibration=True)
+    time.sleep(60*calibration_time)
     BitBot.stop()
-    final_value1 = BitBot.cash() + BitBot.crypto() * (BitBot.historical_prices()[-1]['price'])
-    cash_gain1 = round(final_value1 - initial_value1, 2)
-    percent_gain1 = round((final_value1 - initial_value1) * 100 / initial_value1, 2)
-    print("BitBot1 made $" + str(cash_gain1) + " (" + str(percent_gain1) + "%)")
+    
+    print("\n\nCalibrating Finite State Machine\n\n")
+    BitBot._fsm.calibrate(BitBot)
+    print("\n\nFinished Calibrating Finite State Machine\n\n")
+    '''
+    
+    BitBot.start()
+    time.sleep(60*run_time)
+    BitBot.stop()
 
 
 def main():

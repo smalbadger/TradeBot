@@ -1,6 +1,8 @@
 # TradeBot 1.0.0
 Welcome to TradeBot! This document describes the architecture of this specific version of TradeBot.
 
+# This version of Tradebot is NOT PROFITABLE yet. Do not run this bot unless you wish to loss money.
+
 ## Bot
 <pre>                            
            /\                   This is the Bot object. It is the highest level of looking at the trading program, The user will      
