@@ -6,7 +6,7 @@ Bots are listed in alphabetic order, which happens to be the order that they wer
 Our best girl: Angela
 
 ### Angela
-| #### Category      | #### Bot-Specific explanation                                                                     |
+| Category           | Bot-Specific explanation                                                                          |
 | ------------------:|:------------------------------------------------------------------------------------------------- |
 | Profit Status      | Not profitable                                                                                    |
 | Development Status | Abandoned for having a bad trading algorithm                                                      |
