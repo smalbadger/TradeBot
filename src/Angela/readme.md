@@ -1,5 +1,7 @@
 
-# Hi, my name is Angela - the worst trading bot known to man kind! This document will walk you through my parts
+# Hi, my name is Angela
+### - the worst trading bot known to man kind! 
+This document will walk you through my architecture
 
 ##### (Angela is not profitable yet, and she probably never will be. She's kinda self concious about it though.)
 Disclaimer: This bot's code is not commented very well and reading it will result in immediate heightened levels of stress. This bot also acts as a proof of concept and a prototype. It most likely contains bugs, and you should not run it unless you wish to loss money.
