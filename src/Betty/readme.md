@@ -1,7 +1,39 @@
-# TradeBot 1.0.0
-Welcome to TradeBot! This document describes the architecture of this specific version of TradeBot.
+# Hi, my name is Betty - the sexiest trading bot known to man kind! This document will walk you through my parts
 
-# This version of Tradebot is NOT PROFITABLE yet. Do not run this bot unless you wish to loss money.
+
+#### This bot is under development
+
+
+  (_, d888888888b, d888888888b
+   d888888888888/888888888888b_)
+(_8888888P’”"‘`Y8Y`’”"‘”Y88888b
+  Y8888P.-’_____`______’-.Y8888b_)
+ , _Y88P_(_(_(________)_)_)_d88Y_,
+  Y88b, __(o__)______(o__)_d8888P
+  `Y888___’-'________’-'__`88Y`
+  , d/O\_________c_________/O\b,
+    \_/’., ______w______, .’\_/
+       .-`_____________`-.
+      /___, _d88b__d88b____\
+     /___/_88888bd88888`\__\
+    /___/_\_Y88888888Y___\__\
+    \__\___\_88888888____/__/
+     `\_`.__\d8888888b, _/\\/
+       `.//.d8888888888b;_|
+         |/d888888888888b/
+          d8888888888888888b
+      , _d88p”"q88888p”"q888b,
+      `”"‘`\____”`|____/`’”"`
+            `.____|===/
+              >___|___|
+              /___|___|
+              |___|___|
+              |___Y__/
+              \__/__/
+              |_/|_/
+             /_/ /_|
+            /=/  |=/
+            `”`   `”`
 
 ## Bot
 <pre>                            
@@ -62,43 +94,6 @@ _________________________       This is the BotSocket object. If you couldn't te
 |                       |
 |_______________________|
 </pre>                                 
-                                  
-## Finite State Machine
-<pre>
-    /----\                      Although the FSM (Finite State Machine) and State classes are separate from each other, we'll
-    | CS |                  describe them together since they are practically inseparable. Basically, this is what decides if
-    \----/                  we need to buy or sell and if so, how much. Here's how the trading algorithm works:
-     ^  |
-     |  |                       1. Gather some data about the currency. See the BotSocket section to see the information that
-     |  v                          we're keeping for this version.
-    /----\
-    | SS |                      2. Look at the currency history and decide if we're in the correct state or if we should change. 
-    \----/
-     ^  |                       3. Execute the trade associated with the current state.
-     |  |
-     |  v                       4. wait for a set amount of time.
-    /----\
-    | WS |                      Now that you have a basic idea of the trading algorithm, I'll give you more details about the variables
-    \----/                  that are in these classes.
-     ^  |
-     |  |               State variables:
-     |  v                       The state class holds variables that allow us to know what type of trade we're doing, what state we're at,
-    /----\                  and how much to buy or sell along with the buffer that the price will have to break to change states in either
-    |HOLD|                  direction. Furthermore, it contains variables that describe the high, low, and entry prices that the currency
-    \----/                  has reached while being in that state. These states are linked together by holding references to the next and
-     ^  |                   previous states (like a doubly linked list). Note that this is intended to make the buy/sell decision less
-     |  |                   volatile. 
-     |  v          
-    /----\              FSM variables:
-    | WB |                      The FSM class holds variables that keep track of the current state, set a minimum time between trades, 
-    \----/                  and most importantly, the six states that we can move between. We can also limit the number of states by
-     ^  |                   creating a list of state_ids that we want to use. the default list is [1,2,3,4,5,6] which uses all states,
-     |  |                   but we could limit the state usage to [3,4,5] or any other sequence of continuous states. The FSM also 
-     |  v                   keeps track of the trading thread which will have to be tied up after trading is done. 
-    /----\
-    | SB |
-    \----/
-</pre>   
     
 ## GDAX Client
 <pre>
