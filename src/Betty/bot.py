@@ -36,7 +36,7 @@ from fsm import *
 #                                   Bot                                        #
 ################################################################################
 class Bot():
-    def __init__(self, name="Bot", currency="BTC-USD", transition_buffer=0.4, webSocket=None):
+    def __init__(self, name="Bot", currency="BTC-USD", webSocket=None):
         
         #obtain credentials, authenticate GDAX client and websocket, and then over-write credentials
         self._passphrase = ""
@@ -48,17 +48,16 @@ class Bot():
         self.scramble_credentials() #over-writes the credentials with new characters
         
         self._name = name
-        self._fsm = FSM(state_usage=[3,4,5])
         self._currency = currency
         self._running = False
-        self._calibration = False
         
-        # These fields will only be used for fake trading analysis. Each bot will keep a portfolio
-        # and at the end of program execution, we'll plot the bots against each other 
+        #used for plotting session
         self._prices_at_trading = []    #keeps the price history of the crypto at the trading points
-        self._portfolio_at_trading = [] #keeps the value history of the bot's portfolio 
-        self._crypto = 0                #set an initial value for fake crypto
-        self._cash = float(self.client().get_product_ticker(product_id=self.currency())["price"])  #set an initial fake cash value
+        self._portfolio_at_trading = [] #keeps the value history of the bot's portfolio
+         
+        #used for fake trading. Change initial values as desired. For best results, try to mimick your own account values here.
+        self._fake_crypto = 0           #set an initial value for fake crypto
+        self._fake_cash = 1000          #set an initial fake cash value
 
         
 
@@ -67,9 +66,6 @@ class Bot():
     #####################
     def name(self):
         return self._name
-        
-    def calibration(self):
-        return self._calibration    
         
     def currency(self):
         return self._currency
@@ -80,38 +76,20 @@ class Bot():
     def client(self):
         return self._client
         
-    def current_state():
-        return self._fsm.current_state()
-        
-    def history_is_full(self):
-        return len(self._socket._history) == self._socket._history_size
-        
     def historical_prices(self, until_time=None):
-        if until_time == None:
-            return self._socket._history[self.currency()]
-        else:
-            history = []
-            
-            for i in self._socket._history[self.currency()]:
-                if i["time"] != until_time:
-                    history.append(i) 
-                
-            history.append(i) 
-            return history
+        return self._socket._history[self.currency()]
         
-    def cash(self):
+    def fake_cash(self):
         return self._cash
         
-    def crypto(self):
+    def fake_crypto(self):
         return self._crypto
         
     def running(self):
         self._running = self._running and not self.socket().stop
         return self._running
         
-    #returns the amount of crypto and the amount of cash that is available to the bot
-    #Note, this method retrieves data directly from GDAX and is not to be confused 
-    #with the cash and crypto fields of the bot.
+    #Returns the amount of all holdings in your account including cash
     def get_balances(self, all_currencies=False):
         accounts = self.client().get_accounts()
         for account in accounts:
@@ -167,14 +145,11 @@ class Bot():
         self._secret = "Secret? What's that? I don't know what an API Secret is. Sorry, I think you got me confused with someone else"
 
     #Starts the robot's listening and trading sequence
-    def start(self, should_print=True, calibration=False):
+    def start(self, should_print=True):
         self.create_portfolio()
         self._running = True
-        self._calibration = calibration
-        #if self.socket().stop: #only start the socket once
         self._socket.start()
-        self._fsm.run(self, calibration=calibration)
-        
+        #TODO: start some other trading mechanism
         
         if should_print == True:
             print(self.name()+" has been started")
@@ -182,7 +157,7 @@ class Bot():
     #Stops the bot's trading sequence and ties up the trading thread
     def stop(self, should_print=True):
         self._running = False           #shut down client
-        self._fsm._trade_thread.join()  #close trading thread
+        #TODO: tie up trading thread
         self.socket().close()           #shut down web socket.
         
         if not self._calibration:
@@ -256,6 +231,7 @@ class Bot():
             print("portfolio: {:.2f}    price: {:.2f}".format(portfolio[i], prices[i]))
     
     def plot_session(self):
+        #TODO: add colored dots where buys and sells occur. 
         #This method is mostly meant for debug purposes to see how the bot is doing against the crypto itself.
         #It relies on the _prices_at_trading and _profolio_at_trading lists being populated.
         #Note, this method may not be called if debug information is not gathered or the bot was not run.

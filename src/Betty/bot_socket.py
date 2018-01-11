@@ -23,22 +23,19 @@ import gdax
 #                                 BotSocket                                    #
 ################################################################################
 class BotSocket(gdax.WebsocketClient):
-    def __init__(self, product=None, key=None, secret=None, passphrase=None, channels=None):
-        super(BotSocket, self).__init__(products=product, api_key=key, api_secret=secret, api_passphrase=passphrase, channels=channels)
+    def __init__(self, product=None, channels=None):
+        super(BotSocket, self).__init__(products=product, channels=channels)
         self._history_size = 1000
         self._history = {"BTC-USD": [], "BCH-USD": [], "LTC-USD": [], "ETH-USD": []}
         self._message_count = 0
 
     def on_open(self):
         print("-- Starting Bot Socket --")
-        self._history = {"BTC-USD": [], "BCH-USD": [], "LTC-USD": [], "ETH-USD": []}
-        self._message_count = 0
         self.stop = 0
 
-    def on_message(self, msg):
-        self._message_count += 1
-        
+    def on_message(self, msg):        
         if 'product_id' in msg and 'price' in msg and 'side' in msg and 'type' in msg and msg['type'] == 'match' and 'time' in msg and 'sequence' in msg:
+            self._message_count += 1
             i = 0
             length = len(self._history[msg['product_id']])
             while length != 0 and msg['sequence'] < self._history[msg['product_id']][length-i-1]["sequence"]:
@@ -59,3 +56,7 @@ class BotSocket(gdax.WebsocketClient):
         self.stop = 1
         print("-- Terminating Bot Socket --")
         print("message count: " + str(self._message_count))
+    
+    def clear_history(self):    
+        self._history = {"BTC-USD": [], "BCH-USD": [], "LTC-USD": [], "ETH-USD": []}
+        self._message_count = 0
