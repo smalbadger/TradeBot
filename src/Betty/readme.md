@@ -1,4 +1,6 @@
-# Hi, my name is Betty - the sexiest trading bot known to man kind! This document will walk you through my parts
+# Hi, my name is Betty 
+###- the sexiest trading bot known to man kind! 
+This document will walk you through my architecture
 
 
 #### This bot is under development
