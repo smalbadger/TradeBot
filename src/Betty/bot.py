@@ -6,10 +6,18 @@
             - Used to interact with the GDAX platform and user accounts. To do any trading, we need to use the 
               gdax.AuthenticatedClient() function. This gives access to functions that interact with a specific
               account, but requires that you provide an API key, secret, and passphrase.
+              
         + self._socket
             - This will connect you to the websocket. The websocket allows you to get constant information. To 
               reduce thread usage, it's best to create a BotSocket object (my wrapper for the websocket) and pass
               it in to each of the Bot objects that you create.
+              
+        + self._trade_hands
+            - This is what does the actual trading. It has a paper-trade mode for testing.
+            
+        + self._data_center
+            - This is exactly what it sounds like. All of the data we store will go to the data center, get dispatched,
+              and then get processed there. The data center also allows for easy access of all data.
               
     For simplicity, the Bot only supports trading one cryptocurrency. To trade multiple currencies, you should create 
     multiple bot objects with different currency attributes. Note that each bot will use its own thread for trading. 
@@ -30,7 +38,8 @@ import plotly.plotly as py
 import plotly.graph_objs as go
 
 from bot_socket import BotSocket
-from fsm import *
+from TradeHands import *
+from DataCenter import *
 
 ################################################################################
 #                                   Bot                                        #
@@ -43,23 +52,23 @@ class Bot():
         self._secret = ""
         self._key = ""
         self.get_credentials(credentials_file="../../credentials.txt")      #fills in passphrase, secret, and key
+        
+        #main body parts
+        self._data_center = DataCenter()
         self._client = gdax.AuthenticatedClient(self._key, self._secret, self._passphrase)
         self._socket = webSocket
-        self.scramble_credentials() #over-writes the credentials with new characters
+        self._trade_hands = TradeHands()
         
+        #other bot stuff
         self._name = name
         self._currency = currency
         self._running = False
-        
-        #used for plotting session
-        self._prices_at_trading = []    #keeps the price history of the crypto at the trading points
-        self._portfolio_at_trading = [] #keeps the value history of the bot's portfolio
-         
-        #used for fake trading. Change initial values as desired. For best results, try to mimick your own account values here.
         self._fake_crypto = 0           #set an initial value for fake crypto
         self._fake_cash = 1000          #set an initial fake cash value
 
+        self._socket.set_data_center(self._data_center)
         
+        self.scramble_credentials()
 
     #####################
     ##---- GETTERS ----##

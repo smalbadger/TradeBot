@@ -23,40 +23,37 @@ import gdax
 #                                 BotSocket                                    #
 ################################################################################
 class BotSocket(gdax.WebsocketClient):
-    def __init__(self, product=None, channels=None):
+    def __init__(self, product=None, channels=None, should_print=True):
         super(BotSocket, self).__init__(products=product, channels=channels)
+        
+        self._should_print = should_print
+        self._data_center = None
         self._history_size = 1000
-        self._history = {"BTC-USD": [], "BCH-USD": [], "LTC-USD": [], "ETH-USD": []}
         self._message_count = 0
 
     def on_open(self):
-        print("-- Starting Bot Socket --")
+        if self._should_print:
+            print("-- Starting Bot Socket --")
         self.stop = 0
 
     def on_message(self, msg):        
-        if 'product_id' in msg and 'price' in msg and 'side' in msg and 'type' in msg and msg['type'] == 'match' and 'time' in msg and 'sequence' in msg:
+        if 'product_id' in msg and 'price' in msg and 'side' in msg and 'time' in msg and 'sequence' in msg and 'type' in msg and msg['type'] == 'match':
             self._message_count += 1
-            i = 0
-            length = len(self._history[msg['product_id']])
-            while length != 0 and msg['sequence'] < self._history[msg['product_id']][length-i-1]["sequence"]:
-                i = i + 1
-            product_id =   str(msg['product_id'])
-            price      = float(msg['price'     ])
-            side       =   str(msg['side'      ])
-            time       =   str(msg['time'      ])
-            sequence   =   int(msg['sequence'  ])
-            if i == 0:
-                self._history[msg['product_id']].append({"price": price, "side": side, "time": time, "sequence": sequence})
-            else:
-                self._history[msg['product_id']].insert(length-i, {"price": price, "side": side, "time": time, "sequence": sequence})
+            msg["msg_type"] = "price_match"
+            self._data_center.dispatch_message(msg)
             
-            print("{}: {:10.2f}\t{}".format(product_id, price, side))
+            if self._should_print:
+                print("{}: {:10.2f}\t{}".format(product_id, price, side))
             
     def on_close(self):
         self.stop = 1
-        print("-- Terminating Bot Socket --")
-        print("message count: " + str(self._message_count))
+        if self._should_print:
+            print("-- Terminating Bot Socket --")
+            print("message count: " + str(self._message_count))
     
     def clear_history(self):    
         self._history = {"BTC-USD": [], "BCH-USD": [], "LTC-USD": [], "ETH-USD": []}
+        
+    def set_data_center(self, data_center):
+        self._data_center = data_center
         self._message_count = 0

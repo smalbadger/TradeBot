@@ -3,7 +3,7 @@ This document lists all of our bots and their current status. If you're a develo
 
 Bots are listed in alphabetic order, which happens to be the order that they were created. 
 
-Our best girl: Angela
+Our best girl: *Angela*
 
 ### Angela
 | Category           | Bot-Specific explanation                                                                          |
