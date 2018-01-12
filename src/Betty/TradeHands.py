@@ -4,8 +4,8 @@ import time
 from threading import Thread
 
 class TradeHands():
-    def __init__(self, bot):
-        self._robot = bot
+    def __init__(self, robot):
+        self._robot = robot
         self._wait_time = 1
         self._running = False
         self._long_position  = None

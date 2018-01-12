@@ -54,10 +54,10 @@ class Bot():
         self.get_credentials(credentials_file="../../credentials.txt")      #fills in passphrase, secret, and key
         
         #main body parts
-        self._data_center = DataCenter()
+        self._data_center = DataCenter(self)
         self._client = gdax.AuthenticatedClient(self._key, self._secret, self._passphrase)
         self._socket = webSocket
-        self._trade_hands = TradeHands()
+        self._trade_hands = TradeHands(self)
         
         #other bot stuff
         self._name = name
@@ -155,7 +155,7 @@ class Bot():
 
     #Starts the robot's listening and trading sequence
     def start(self, should_print=True):
-        self.create_portfolio()
+        #self.create_portfolio()
         self._running = True
         self._socket.start()
         #TODO: start some other trading mechanism
@@ -168,11 +168,6 @@ class Bot():
         self._running = False           #shut down client
         #TODO: tie up trading thread
         self.socket().close()           #shut down web socket.
-        
-        if not self._calibration:
-            #self.print_trade_history()
-            self.create_portfolio()
-            self.plot_session()
         
         if should_print == True:
             print(self.name()+" has been stopped")
