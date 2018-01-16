@@ -63,10 +63,11 @@ class Bot():
         self._name = name
         self._currency = currency
         self._running = False
-        self._fake_crypto = 0           #set an initial value for fake crypto
-        self._fake_cash = 1000          #set an initial fake cash value
+        self._fake_crypto = 0          #set an initial value for fake crypto
+        self._fake_cash = 1000         #set an initial fake cash value
 
         self._socket.set_data_center(self._data_center)
+        self._socket.set_bot(self)
         
         self.scramble_credentials()
 
@@ -97,6 +98,13 @@ class Bot():
     def running(self):
         self._running = self._running and not self.socket().stop
         return self._running
+        
+    #####################
+    ##---- SETTERS ----##
+    #####################
+    def set_currency(self, product):
+        print("New currency being traded: ", product)
+        self._currency = product
         
     #Returns the amount of all holdings in your account including cash
     def get_balances(self, all_currencies=False):
@@ -155,145 +163,25 @@ class Bot():
 
     #Starts the robot's listening and trading sequence
     def start(self, should_print=True):
-        #self.create_portfolio()
+        #self._data_center.create_portfolio()
         self._running = True
         self._socket.start()
-        #TODO: start some other trading mechanism
+        self._trade_hands.start()
         
         if should_print == True:
             print(self.name()+" has been started")
 
     #Stops the bot's trading sequence and ties up the trading thread
     def stop(self, should_print=True):
+        self._trade_hands.sell()
         self._running = False           #shut down client
         #TODO: tie up trading thread
         self.socket().close()           #shut down web socket.
         
         if should_print == True:
             print(self.name()+" has been stopped")
-
-    #This method just generates a portfolio donut chart using plotly. 
-    #Currently, the picture gets put on their website
-    def create_portfolio(self):
-        prices = {}
-        for i in self.client().get_products():
-            p_id = i["id"]
-            if "USD" in p_id:
-                prices[p_id] = float(self.client().get_product_ticker(product_id=p_id)["price"])
-
-        USD, BTC_amount, BCH_amount, ETH_amount, LTC_amount = self.get_balances(all_currencies=True)
-        BTC_worth, BCH_worth, ETH_worth, LTC_worth = (BTC_amount * prices["BTC-USD"]), (BCH_amount * prices["BCH-USD"]), (ETH_amount * prices["ETH-USD"]), (LTC_amount * prices["LTC-USD"]),
-
-        net_worth = USD + BTC_worth + BCH_worth + ETH_worth + LTC_worth
-        net_worth = round(net_worth, 2)
-        title = "GDAX\n${}".format(net_worth)
-
-        plotly.tools.set_credentials_file(username='TradeBotTeam', api_key='SJTSXTDYHHtwLyul8olP')
-        fig = {
-            "data": [{
-                 "values": [USD, BTC_worth, BCH_worth, ETH_worth, LTC_worth],
-                 "labels": ["USD", "BTC", "BCH", "ETH", "LTC"],
-                 "domain": {"x": [0, 1]},
-                 "name"  : "Portfolio",
-                 "hoverinfo": "label+percent+name",
-                 "hole": .5,
-                 "type": "pie"
-             }],
-             "layout": {
-                 "title": "Portfolio",
-                 "annotations": [{
-                     "font": { "size": 20 },
-                     "showarrow": False,
-                     "text": title
-                 }]
-             }
-        }
-
-        pie_chart = py.plot(fig, filename="GDAX_porfolio_pie_chart")
-        return pie_chart
-
-    #This method uses the client object to print a list of all available crypto prices
-    def print_current_prices(self):
-        for i in self.client().get_products():
-            p_id = i["id"]
-            if "USD" in p_id:
-                print(p_id + " : " + str(self.client().get_product_ticker(product_id=p_id)["price"]))
-                
-    def print_price_history(self):
-        #print all of th prices that were recorded in the history of the bot.
-        history = self.historical_prices()
-        for entry in history:
-            print("sequence: {:d}   price: {:6.2f}   side: {}".format(entry['sequence'], entry['price'], entry['side']))
-                
-    def print_trade_history(self):
-        prices = self._prices_at_trading
-        portfolio = self._portfolio_at_trading
-        
-        assert (len(prices) == len(portfolio)), "OOPS: Somehow the trading history arrays were not built correctly."
-        
-        for i in range(len(prices)):
-            print("portfolio: {:.2f}    price: {:.2f}".format(portfolio[i], prices[i]))
-    
-    def plot_session(self):
-        #TODO: add colored dots where buys and sells occur. 
-        #This method is mostly meant for debug purposes to see how the bot is doing against the crypto itself.
-        #It relies on the _prices_at_trading and _profolio_at_trading lists being populated.
-        #Note, this method may not be called if debug information is not gathered or the bot was not run.
-        
-        assert(len(self._prices_at_trading) != 0 and len(self._portfolio_at_trading)!=0)
-        
-        if len(self._prices_at_trading) != len(self._portfolio_at_trading):
-            print("\n\nWARNING! price and portfolio histories are not the same length.")
-            print("prices    length: {}".format(len(self._prices_at_trading)))
-            print("portfolio length: {}".format(len(self._portfolio_at_trading)))
-            print("Cannot generate session performance analysis.")
-            print("\n\n")
+            print("Cash:\t", self._fake_cash)
+            print("Crypto:\t", self._fake_crypto)
             
-                    
-        #color_spectrum = cl.to_html( cl.scales['7']['div']['RdYlGn']
-        #color_spectrum = []
-        base_price = self._prices_at_trading[0]["value"]
-        base_portfolio_value = self._portfolio_at_trading[0]["value"]
-        
-        x_axis = []
-        portfolio_value_at_trading = self._portfolio_at_trading[:]
-        portfolio_color_at_trading = self._portfolio_at_trading[:] 
-        prices_at_trading = self._prices_at_trading[:]
-        
-        difference = []
-        for i in range(len(self._prices_at_trading)):
-            x_axis.append(i)
-            portfolio_value_at_trading[i] = ((self._portfolio_at_trading[i]["value"] / base_portfolio_value) -1 ) * 100
-            prices_at_trading[i] = ((self._prices_at_trading[i]["value"] / base_price) -1 )* 100
-            
-            difference.append(portfolio_value_at_trading[i] - prices_at_trading[i])
-            
-            #if self._portfolio_value_at_trading[i]["state"] != 0:
-            #    portfolio_color_at_trading[i] = self._portfolio_value_at_trading[i]["state"] + 1
-            #else:
-            #    portfolio_color_at_trading[i] = self._portfolio_value_at_trading[i]["state"]
-            
-            
-        trace1 = go.Scatter(
-            x = x_axis,
-            y = prices_at_trading,
-            name = 'product',
-            connectgaps = True
-        )
-        trace2 = go.Scatter(
-            x = x_axis,
-            y = portfolio_value_at_trading,
-            name = 'portfolio',
-            connectgaps = True
-        )
-        trace3 = go.Scatter(
-            x = x_axis,
-            y = difference,
-            name = 'difference',
-            connectgaps = True
-        )
 
-        data = [trace1, trace2, trace3]
 
-        fig = dict(data=data)
-        py.plot(fig, filename=(self.name()+"_results"))

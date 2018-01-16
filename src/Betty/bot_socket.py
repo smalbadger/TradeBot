@@ -26,6 +26,7 @@ class BotSocket(gdax.WebsocketClient):
     def __init__(self, product=None, channels=None, should_print=True):
         super(BotSocket, self).__init__(products=product, channels=channels)
         
+        self._bot = None
         self._should_print = should_print
         self._data_center = None
         self._history_size = 1000
@@ -41,7 +42,7 @@ class BotSocket(gdax.WebsocketClient):
             self._message_count += 1
             msg["msg_type"] = "price_match"
 
-            if self._should_print:
+            if self._should_print and msg['product_id'] == self._bot.currency():
                 print("{}   {}: {:10}\t{}".format(msg['time'], msg['product_id'], msg['price'], msg['side']))
 
             self._data_center.dispatch_message(msg)
@@ -57,4 +58,6 @@ class BotSocket(gdax.WebsocketClient):
         
     def set_data_center(self, data_center):
         self._data_center = data_center
-        self._message_count = 0
+        
+    def set_bot(self, bot):
+        self._bot = bot
