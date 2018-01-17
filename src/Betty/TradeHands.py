@@ -77,9 +77,9 @@ class TradeHands():
                             trade_flag = 1
                             
                 if trade_flag:                
-                    msg["time"]  = self._crypto_history[self._robot.currency()][-1]["time"]
-                    msg["price"] = last_price
-                    msg["volume"]= None # this should change later
+                    msg["time"]     = self._crypto_history[self._robot.currency()][-1]["time"]
+                    msg["price"]    = last_price
+                    msg["volume"]   = None # this should change later
                     msg["msg_type"] = ["trade"]
                     
                     print(msg)

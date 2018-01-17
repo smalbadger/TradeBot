@@ -1,6 +1,5 @@
 from datetime import datetime
 from datetime import timedelta
-import re
 
 class DataCenter():
     def __init__(self, robot):
@@ -127,7 +126,21 @@ class DataCenter():
 
     def get_portfolio(self):
         #amount is how much of a currency you own. The value is the worth in USD
-        portfolio = {"BTC-USD": {}, "LTC-USD": {}, "BCH-USD": {}, "ETH-USD": {}, "USD": {}}
+        portfolio = {"BTC-USD": {"amount": 1, "value": 1}, 
+                     "LTC-USD": {"amount": 1, "value": 1}, 
+                     "BCH-USD": {"amount": 1, "value": 1},
+                     "ETH-USD": {"amount": 1, "value": 1}, 
+                     "USD":     {"amount": 1, "value": 1}}
+        
+        need_to_return = 0
+        for currency in self._crypto_history.keys():
+            portfolio[currency]["amount"] = 1
+            portfolio[currency]["value"]  = 1
+            if len(self._crypto_history[currency]) == 0:
+                need_to_return = 1    
+
+        if need_to_return:        
+            return portfolio
         
         accounts = self._robot.client().get_accounts()
         
@@ -136,19 +149,19 @@ class DataCenter():
             amount = float(account["balance"])
             if currency == "BTC":
                 portfolio["BTC-USD"]["amount"] = amount
-                portfolio["BTC-USD"]["value"]  = amount * self._crypto_history["BTC-USD"]["price"] 
+                portfolio["BTC-USD"]["value"]  = amount * self._crypto_history["BTC-USD"][-1]["price"] 
                 
             if currency == "BCH":
                 portfolio["BCH-USD"]["amount"] = amount
-                portfolio["BCH-USD"]["value"]  = amount * self._crypto_history["BCH-USD"]["price"] 
+                portfolio["BCH-USD"]["value"]  = amount * self._crypto_history["BCH-USD"][-1]["price"] 
             
             if currency == "ETH":
                 portfolio["ETH-USD"]["amount"] = amount
-                portfolio["ETH-USD"]["value"]  = amount * self._crypto_history["ETH-USD"]["price"] 
+                portfolio["ETH-USD"]["value"]  = amount * self._crypto_history["ETH-USD"][-1]["price"] 
             
             if currency == "LTC":
                 portfolio["LTC-USD"]["amount"] = amount
-                portfolio["LTC-USD"]["value"]  = amount * self._crypto_history["LTC-USD"]["price"] 
+                portfolio["LTC-USD"]["value"]  = amount * self._crypto_history["LTC-USD"][-1]["price"] 
             
             if currency == "USD":
                 portfolio["USD"]["amount"] = amount
