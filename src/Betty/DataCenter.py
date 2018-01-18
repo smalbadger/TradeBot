@@ -1,5 +1,5 @@
-from datetime import datetime
-from datetime import timedelta
+import datetime
+from datetime import datetime, timedelta
 
 class DataCenter():
     def __init__(self, robot):
@@ -126,18 +126,21 @@ class DataCenter():
 
     def get_portfolio(self):
         #amount is how much of a currency you own. The value is the worth in USD
-        portfolio = {"BTC-USD": {"amount": 1, "value": 1}, 
-                     "LTC-USD": {"amount": 1, "value": 1}, 
-                     "BCH-USD": {"amount": 1, "value": 1},
-                     "ETH-USD": {"amount": 1, "value": 1}, 
-                     "USD":     {"amount": 1, "value": 1}}
+        portfolio = {"BTC-USD" : {"amount": 1, "value": 1}, 
+                     "LTC-USD" : {"amount": 1, "value": 1}, 
+                     "BCH-USD" : {"amount": 1, "value": 1},
+                     "ETH-USD" : {"amount": 1, "value": 1}, 
+                     "USD"     : {"amount": 1, "value": 1},
+                     "total"   : 0,
+                     "time"    : datetime.now(),
+                     "msg_type": "portfolio"}
         
         need_to_return = 0
         for currency in self._crypto_history.keys():
             portfolio[currency]["amount"] = 1
             portfolio[currency]["value"]  = 1
             if len(self._crypto_history[currency]) == 0:
-                need_to_return = 1    
+                need_to_return = 1
 
         if need_to_return:        
             return portfolio

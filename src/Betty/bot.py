@@ -173,7 +173,9 @@ class Bot():
 
     #Stops the bot's trading sequence and ties up the trading thread
     def stop(self, should_print=True):
-        self._trade_hands.sell()
+        if len(self._data_center._crypto_history[self.currency()]) > 0:
+            self._trade_hands.sell()
+            
         self._running = False           #shut down client
         #TODO: tie up trading thread
         self.socket().close()           #shut down web socket.

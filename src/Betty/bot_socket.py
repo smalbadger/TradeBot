@@ -41,10 +41,10 @@ class BotSocket(gdax.WebsocketClient):
         if 'product_id' in msg and 'price' in msg and 'side' in msg and 'time' in msg and 'sequence' in msg and 'type' in msg and msg['type'] == 'match':
             self._message_count += 1
             msg["msg_type"] = "price_match"
-
+    
             if self._should_print and msg['product_id'] == self._bot.currency():
                 print("{}   {}: {:10}\t{}".format(msg['time'], msg['product_id'], msg['price'], msg['side']))
-
+            
             self._data_center.dispatch_message(msg)
                         
     def on_close(self):
