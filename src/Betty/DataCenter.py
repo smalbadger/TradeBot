@@ -7,7 +7,7 @@ class DataCenter():
         self._crypto_history = {"BTC-USD": [], "BCH-USD": [], "LTC-USD": [], "ETH-USD": []}
         self._trade_history  = []
         self._portfolio_history = []
-        self._ma_collection = {1:[], 5:[], 10:[], 30:[], 60:[], 120: []}
+        self._ma_collection = {1:[], 5:[], 10:[], 30:[], 120: []}
         #self._time_date_regex = re.compile('\dT\d.\d\w') # ^[0-9]*T[0-9]*\.[0-9]*[^0-9]*?
 
     def dispatch_message(self, msg):
@@ -18,45 +18,19 @@ class DataCenter():
 
         elif msg_type == "trade":
             self.update_trade_history(msg)
-            self.update_portfolio_history()
+            
+        elif msg_type == "portfolio":
+            self.update_portfolio_history(msg)
 
     def update_trade_history(self, msg):
         #each entry will take the following form:
-        #   {"time": None, "side": None, "volume": None, "price": None}
+        #   {"entry_time": None, "exit_time": None, "entry_price": None, "exit_price": None, "high_price": None, "product_id": None}
+        
+        self._trade_history.append(msg)
 
-        product_id =   str(msg['product_id'])
-        price      = float(msg['price'     ])
-        side       =   str(msg['side'      ])
-        time       =   str(msg['time'      ])
-        sequence   =   int(msg['sequence'  ])
-
-        self._trade_history[msg['product_id']].append({"price": price, "side": side, "time": time, "sequence": sequence})
-
-    def update_portfolio_history(self):
-        #each entry will take the following form:
-        #   {"time": None,
-        #    "total": None,
-        #    "BTC-USD": {"amount": None, "value": None},
-        #    "LTC-USD": {"amount": None, "value": None},
-        #    "ETH-USD": {"amount": None, "value": None},
-        #    "BCH-USD": {"amount": None, "value": None}}
-
-        msg = {}
-
-        accounts = self._robot._client.get_accounts()   #retrieve list of accounts
-        for account in accounts:
-            currency = account["currency"]
-            amount = float(account["balance"])
-            value = float(self._robot._client.get_product_ticker(currency))
-            if currency != "USD":
-                msg[currency+"-USD"] = {"amount": amount, "value": value}
-            else:
-                USD = amount
-
-        msg["total"] = msg["BTC-USD"]["value"] + msg["ETH-USD"]["value"] + msg["LTC-USD"]["value"] + msg["BCH-USD"]["value"] + USD
-        msg["time"] = self.to_datetime(msg["time"])
-
-        self._portfolio_history.append(msg)
+    def update_portfolio_history(self, msg):
+        if msg["total"] != 0:
+            self._portfolio_history.append(msg)
         
     def update_crypto_history(self, msg):
         #each entry will take the following form:
@@ -91,13 +65,10 @@ class DataCenter():
         if len(self._crypto_history[currency]) == 0:
             return
         
-        
         for average_size in self._ma_collection.keys():
             last_time = self._crypto_history[currency][-1]["time"]
             current_time_delta = timedelta(minutes=average_size)
             earliest_time = last_time - current_time_delta
-            
-            #print(current_time_delta, " -> ", earliest_time)
             
             if self._crypto_history[currency][0]["time"] > earliest_time:
                 continue
@@ -116,8 +87,7 @@ class DataCenter():
             
             self._ma_collection[average_size].append(msg) 
         
-        print("SMA entries: ", len(self._ma_collection[5]))
-        
+                    
     def to_datetime(self, time):
         # get a datetime object from the string and append that to the message
         new_date_str = time[0:-1]
@@ -169,6 +139,12 @@ class DataCenter():
             if currency == "USD":
                 portfolio["USD"]["amount"] = amount
                 portfolio["USD"]["value"]  = amount 
+        
+        #calculate total value:
+        portfolio_keys = portfolio.keys()
+        for key in portfolio_keys:
+            if "USD" in key:
+                portfolio["total"] += portfolio[key]["value"]
         
         return portfolio
 

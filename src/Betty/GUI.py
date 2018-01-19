@@ -101,15 +101,15 @@ class BotGUI():
         
         #these widgets are to show either weighted or unweighted averages
         average_type_label = tk.Label(self._lower_dash_board, text="Average type:")
-        simple_average_button   = tk.Radiobutton(self._lower_dash_board, text="simple"  , variable=average_type, value="simple"  , command= lambda: self.update_line_chart(CheckVars, myList2, average_type))
-        weighted_average_button = tk.Radiobutton(self._lower_dash_board, text="weighted", variable=average_type, value="weighted", command= lambda: self.update_line_chart(CheckVars, myList2, average_type))
+        simple_average_button   = tk.Radiobutton(self._lower_dash_board, text="simple"  , variable=average_type, value="simple"  , command= lambda: self.update_line_charts(CheckVars, myList2, average_type))
+        weighted_average_button = tk.Radiobutton(self._lower_dash_board, text="weighted", variable=average_type, value="weighted", command= lambda: self.update_line_charts(CheckVars, myList2, average_type))
         average_type_label.pack()
         simple_average_button.pack()
         weighted_average_button.pack()
         
         #these widgets are check boxes for the indivicual average sizes.
         for string, size in myList2:
-            x = tk.Checkbutton(self._lower_dash_board, text = string, variable = CheckVars[i], onvalue = 1, offvalue = 0, height=1, width = 6, command= lambda:self.update_line_chart(CheckVars, myList2, average_type))
+            x = tk.Checkbutton(self._lower_dash_board, text = string, variable = CheckVars[i], onvalue = 1, offvalue = 0, height=1, width = 6, command= lambda:self.update_line_charts(CheckVars, myList2, average_type))
             x.pack(side=BOTTOM)
             i+=1
             
@@ -201,7 +201,8 @@ class BotGUI():
     #   description:    This will replot the entire graph, taking into account user preferences of 
     #                   averages they wish to see.
     ###################################################################################################
-    def update_line_chart(self, CheckVars, Average_list, average_type):
+    def update_line_charts(self, CheckVars, Average_list, average_type):
+        ###stuff dealing with the price plot
         self._price_plot.clear()
         self._portfolio_plot.clear()
         
@@ -210,24 +211,38 @@ class BotGUI():
         portfolio_history   = self._bot._data_center._portfolio_history
         trade_history       = self._bot._data_center._trade_history
         
-        print("-----------------")
-        print("showing averages:")
         for i in range(len(CheckVars)):
             if CheckVars[i].get() == 1:
                 times  = [i["time"] for i in ma_collection[Average_list[i][1]]]
                 values = [i[average_type.get()] for i in ma_collection[Average_list[i][1]]]
                 self._price_plot.plot_date(times, values)[0]
-                print(Average_list[i][1])
             else:
                 self._price_plot.plot_date([],[])
-        print("-----------------")
         
         times  = [i["time"] for i in crypto_history[self._bot.currency()]]
         prices = [i["price"] for i in crypto_history[self._bot.currency()]]
         
         self._prices_line = self._price_plot.plot_date(times, prices)[0]
         self._line_chart_figure.autofmt_xdate()
-            
+        
+        ###stuff dealing with the portfolio plot
+        portfolio_history = self._bot._data_center._portfolio_history
+        portfolio_values  = [element["total"] for element in portfolio_history if element["total"]!=0]
+        times             = [element["time" ] for element in portfolio_history if element["total"]!=0]
+        
+        self._portfolio_plot.clear()
+        self._portfolio_line = self._portfolio_plot.plot_date(times, portfolio_values)
+        self._portfolio_chart_figure.autofmt_xdate()
+        
+        trade_history = self._bot._data_center._trade_history
+        for trade in trade_history:
+            self._portfolio_plot.axvline(x=trade["entry_time"], color="g")
+            self._portfolio_plot.axvline(x=trade["exit_time"], color="r")
+        
+        current_position = self._bot._trading_hands._long_position
+        if current_position != None:
+            self._portfolio_plot.axvline(x=current_position["entry_time"], color="g")
+        
     ###################################################################################################
     #   function:       update_pie_chart
     #   purpose:        re-plots the portfolio pie-chart 
@@ -236,10 +251,10 @@ class BotGUI():
     ###################################################################################################
     def update_pie_chart(self):
         #----------------------------Setup up pie chart ----------------------------
-        portfolio = self._bot._data_center.get_portfolio()
+        portfolio = self._bot._data_center._portfolio_history[-1]
         
         portfolio_keys = portfolio.keys()
-        labels = [key for key in portfolio_keys]
+        labels = [key for key in portfolio_keys if "USD" in key]
         amounts = [portfolio[key]["value"] for key in portfolio_keys if "USD" in key]
         colors = ["gold", "green", "blue", "red", "purple"]
         explode = [0,0,0,0,0]
