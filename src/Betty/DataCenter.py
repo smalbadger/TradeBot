@@ -115,7 +115,11 @@ class DataCenter():
         if need_to_return:        
             return portfolio
         
-        accounts = self._robot.client().get_accounts()
+        try:
+            accounts = self._robot.client().get_accounts()
+        except:
+            print("ERROR: Could not request accounts from GDAX.")
+        
         
         for account in accounts:
             currency = account["currency"]

@@ -5,6 +5,21 @@ This document will walk you through my architecture
 
 #### This bot is under development and this document is not up to date. 
 
+### TODO's:
++ cosmetics:
+    + print vertical buy/sell times on price chart
+    + add option to show price on price chart
+    + update charts automatically
+    + make x-axes the same, and make y axes display actual numbers
+    + create box that shows matched position history and percent gain/loss
+    + allow user to pick time frame they want to see on plots.
+ 
++ functional:
+    + set up actual trading
+    + normalize time (find time zone difference and make sure all times get put into our time zone)
+    + set up error logging
+    
+
 <pre>
 
   (_, d888888888b, d888888888b

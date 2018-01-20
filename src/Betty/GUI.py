@@ -9,13 +9,18 @@ from matplotlib.figure import Figure
 from tkinter import *
 from bot import *
 import tkinter as tk
+from threading import Thread
 
 class BotGUI():
     def __init__(self):
         self.setup_backend()
         self.setup_frontend()
+        
+        self._updater_thread = Thread(target=self.automatic_update)
+        self._updater_thread.start()
+        
         self._root.mainloop()
-
+        
     ###################################################################################################
     #   function:       setup_backend
     #   purpose:        initialize the bot architecture.
@@ -26,8 +31,6 @@ class BotGUI():
     def setup_backend(self):
         socket = BotSocket(product=["BTC-USD", "LTC-USD", "ETH-USD", "BCH-USD"], channels=["matches"])
         self._bot = Bot("Betty", "LTC-USD", socket)
-    
-    
     
     ###################################################################################################
     #   function:       setup_frontend
@@ -74,7 +77,6 @@ class BotGUI():
         self._startButton.grid(row=0, column=0)
         self._stopButton.grid( row=0, column=1)
 
-
             ##########################################
             # Choose currency to trade (radio buttons)
             ##########################################
@@ -87,29 +89,36 @@ class BotGUI():
         tk.Radiobutton(self._upper_dash_board, text=myList[1], padx = 20, variable=v, value=myList[1], command= lambda: self._bot.set_currency(myList[1])).grid(row=2, column=0)
         tk.Radiobutton(self._upper_dash_board, text=myList[2], padx = 20, variable=v, value=myList[2], command= lambda: self._bot.set_currency(myList[2])).grid(row=3, column=0)
         tk.Radiobutton(self._upper_dash_board, text=myList[3], padx = 20, variable=v, value=myList[3], command= lambda: self._bot.set_currency(myList[3])).grid(row=4, column=0)
+        
+            ################################################################
+            # Allows the user to decide how sensitive they want sells to be.
+            ################################################################
+        self._sell_cushion_slider = Scale(self._upper_dash_board, from_=0, to=2, length=600, tickinterval=0.5, resolution=0.01, orient=HORIZONTAL, command=self._bot._trade_hands.set_sell_cushion)
+        self._sell_cushion_slider.grid(row=5, column=0, columnspan=3)
+        self._sell_cushion_slider.set(1)
 
             ######################################################
             # Choose which averages to show on graph (check boxes)
             ######################################################
-        average_type = StringVar()
-        average_type.set("simple")
+        self._average_type = StringVar()
+        self._average_type.set("simple")
         
         #This should be handled more gracefully eventually.
-        CheckVars = [IntVar(), IntVar(), IntVar(), IntVar(), IntVar()] 
-        myList2 = [(" SMA 120", 120), (" SMA 30", 30), (" SMA 10", 10), ("  SMA 5", 5), ("  SMA 1", 1)]
+        self._CheckVars = [IntVar(), IntVar(), IntVar(), IntVar(), IntVar()] 
+        self._averages = [(" SMA 120", 120), (" SMA 30", 30), (" SMA 10", 10), ("  SMA 5", 5), ("  SMA 1", 1)]
         i=0;
         
         #these widgets are to show either weighted or unweighted averages
         average_type_label = tk.Label(self._lower_dash_board, text="Average type:")
-        simple_average_button   = tk.Radiobutton(self._lower_dash_board, text="simple"  , variable=average_type, value="simple"  , command= lambda: self.update_line_charts(CheckVars, myList2, average_type))
-        weighted_average_button = tk.Radiobutton(self._lower_dash_board, text="weighted", variable=average_type, value="weighted", command= lambda: self.update_line_charts(CheckVars, myList2, average_type))
+        simple_average_button   = tk.Radiobutton(self._lower_dash_board, text="simple"  , variable=self._average_type, value="simple"  , command= lambda: self.update_line_charts(self._CheckVars, self._averages, self._average_type))
+        weighted_average_button = tk.Radiobutton(self._lower_dash_board, text="weighted", variable=self._average_type, value="weighted", command= lambda: self.update_line_charts(self._CheckVars, self._averages, self._average_type))
         average_type_label.pack()
         simple_average_button.pack()
         weighted_average_button.pack()
         
         #these widgets are check boxes for the indivicual average sizes.
-        for string, size in myList2:
-            x = tk.Checkbutton(self._lower_dash_board, text = string, variable = CheckVars[i], onvalue = 1, offvalue = 0, height=1, width = 6, command= lambda:self.update_line_charts(CheckVars, myList2, average_type))
+        for string, size in self._averages:
+            x = tk.Checkbutton(self._lower_dash_board, text = string, variable = self._CheckVars[i], onvalue = 1, offvalue = 0, height=1, width = 6, command= lambda:self.update_line_charts(self._CheckVars, self._averages, self._average_type))
             x.pack(side=BOTTOM)
             i+=1
             
@@ -179,8 +188,21 @@ class BotGUI():
         canvas2._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
         
         #This is the refresh button. pressing this will reset the graph and pie chart, but you still have to click the chart for it to update.
-        self._refresh_button = Button(self._upper_dash_board, text="refresh graphics", bg="blue", fg="white", command= lambda: self.refresh_graphics(CheckVars, myList2, average_type))
+        self._refresh_button = Button(self._upper_dash_board, text="refresh graphics", bg="blue", fg="white", command= lambda: self.refresh_graphics(self._CheckVars, self._averages, self._average_type))
         self._refresh_button.grid(row=0, column=2)
+        
+    ###################################################################################################
+    #   function:       automatic_update
+    #   purpose:        refresh graphics automatically 
+    #
+    #   description:    This method will constantly call the refresh_graphics method while the bot is 
+    #                   running. It will update the graphs a coule of times each second.
+    ###################################################################################################
+    def automatic_update(self):
+        while True:
+            if self._bot._running:
+                time.sleep(1/2)
+                self.refresh_graphics(self._CheckVars, self._averages, self._average_type)
         
     ###################################################################################################
     #   function:       refresh_graphics
@@ -202,46 +224,56 @@ class BotGUI():
     #                   averages they wish to see.
     ###################################################################################################
     def update_line_charts(self, CheckVars, Average_list, average_type):
-        ###stuff dealing with the price plot
-        self._price_plot.clear()
-        self._portfolio_plot.clear()
+        try:
+            ###stuff dealing with the price plot
+            self._price_plot.clear()
+            self._portfolio_plot.clear()
+            
+            ma_collection       = self._bot._data_center._ma_collection
+            crypto_history      = self._bot._data_center._crypto_history
+            portfolio_history   = self._bot._data_center._portfolio_history
+            trade_history       = self._bot._data_center._trade_history
+            
+            for i in range(len(CheckVars)):
+                if CheckVars[i].get() == 1:
+                    times  = [i["time"] for i in ma_collection[Average_list[i][1]]]
+                    values = [i[average_type.get()] for i in ma_collection[Average_list[i][1]]]
+                    self._price_plot.plot_date(times, values)[0]
+                else:
+                    self._price_plot.plot_date([],[])
+            
+            times  = [i["time"] for i in crypto_history[self._bot.currency()]]
+            prices = [i["price"] for i in crypto_history[self._bot.currency()]]
+            
+            self._prices_line = self._price_plot.plot_date(times, prices)[0]
+            
+            #plot horizontal sell line
+            current_position = self._bot._trade_hands._long_position
+            if current_position != None:
+                self._price_plot.axhline(y=current_position["high_price"] - (1-self._bot._trade_hands._sell_cushion/100))
+                
+            self._line_chart_figure.autofmt_xdate()
+            
+            ###stuff dealing with the portfolio plot
+            portfolio_history = self._bot._data_center._portfolio_history
+            portfolio_values  = [element["total"] for element in portfolio_history if element["total"]!=0]
+            times             = [element["time" ] for element in portfolio_history if element["total"]!=0]
+            
+            self._portfolio_plot.clear()
+            self._portfolio_line = self._portfolio_plot.plot_date(times, portfolio_values)
+            self._portfolio_chart_figure.autofmt_xdate()
+            
+            trade_history = self._bot._data_center._trade_history
+            for trade in trade_history:
+                self._portfolio_plot.axvline(x=trade["entry_time"], color="g")
+                self._portfolio_plot.axvline(x=trade["exit_time"], color="r")
+            
+            
+            if current_position != None:
+                self._portfolio_plot.axvline(x=current_position["entry_time"], color="g")
         
-        ma_collection       = self._bot._data_center._ma_collection
-        crypto_history      = self._bot._data_center._crypto_history
-        portfolio_history   = self._bot._data_center._portfolio_history
-        trade_history       = self._bot._data_center._trade_history
-        
-        for i in range(len(CheckVars)):
-            if CheckVars[i].get() == 1:
-                times  = [i["time"] for i in ma_collection[Average_list[i][1]]]
-                values = [i[average_type.get()] for i in ma_collection[Average_list[i][1]]]
-                self._price_plot.plot_date(times, values)[0]
-            else:
-                self._price_plot.plot_date([],[])
-        
-        times  = [i["time"] for i in crypto_history[self._bot.currency()]]
-        prices = [i["price"] for i in crypto_history[self._bot.currency()]]
-        
-        self._prices_line = self._price_plot.plot_date(times, prices)[0]
-        self._line_chart_figure.autofmt_xdate()
-        
-        ###stuff dealing with the portfolio plot
-        portfolio_history = self._bot._data_center._portfolio_history
-        portfolio_values  = [element["total"] for element in portfolio_history if element["total"]!=0]
-        times             = [element["time" ] for element in portfolio_history if element["total"]!=0]
-        
-        self._portfolio_plot.clear()
-        self._portfolio_line = self._portfolio_plot.plot_date(times, portfolio_values)
-        self._portfolio_chart_figure.autofmt_xdate()
-        
-        trade_history = self._bot._data_center._trade_history
-        for trade in trade_history:
-            self._portfolio_plot.axvline(x=trade["entry_time"], color="g")
-            self._portfolio_plot.axvline(x=trade["exit_time"], color="r")
-        
-        current_position = self._bot._trading_hands._long_position
-        if current_position != None:
-            self._portfolio_plot.axvline(x=current_position["entry_time"], color="g")
+        except:
+            return
         
     ###################################################################################################
     #   function:       update_pie_chart
@@ -251,7 +283,11 @@ class BotGUI():
     ###################################################################################################
     def update_pie_chart(self):
         #----------------------------Setup up pie chart ----------------------------
-        portfolio = self._bot._data_center._portfolio_history[-1]
+        try:
+            portfolio = self._bot._data_center._portfolio_history[-1]
+        except:
+            return
+        
         
         portfolio_keys = portfolio.keys()
         labels = [key for key in portfolio_keys if "USD" in key]

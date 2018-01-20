@@ -14,6 +14,7 @@ class TradeHands():
         self._acquire_position = True
         self._enough_info_to_trade = False
         self._paper_trading = True
+        self._sell_cushion = .5
         
     def start(self):
         self._running = True
@@ -25,7 +26,6 @@ class TradeHands():
                        
             while self._robot._running and self._running:
                 time.sleep(self._wait_time)
-                
                 
                 #record the current portfolio values.
                 sma_1  = DC._ma_collection[ 1]
@@ -55,10 +55,8 @@ class TradeHands():
                 if self._long_position != None and last_price > self._long_position["high_price"]:
                     self._long_position["high_price"] = last_price
                 
-                
-                
                 if self._long_position != None:
-                    if last_price <= (self._long_position["high_price"] * .99):
+                    if last_price <= (self._long_position["high_price"] * (1-self._sell_cushion/100)):
                         self.sell()
                         #add our position to the trade history
                         DC.dispatch_message(deepcopy(self._long_position))
@@ -68,9 +66,8 @@ class TradeHands():
                     if sma_1_1["weighted"] < sma_5_1["weighted"] and sma_1_2["weighted"] > sma_5_2["weighted"]:
                         #record our position
                         self._long_position = {"entry_time": None, "exit_time": None, "entry_price": 0, "exit_price": None, "high_price": 0, "msg_type": "trade"}
-                        self.buy()
-                
-                
+                        self.buy()    
+
         self._trade_thread = Thread(target=_trade_routine)
         self._trade_thread.start()
         
@@ -83,9 +80,11 @@ class TradeHands():
         self._long_position["entry_price"] = last_price
         self._long_position["high_price"]  = last_price
         self._long_position["entry_time"]  = datetime.now()
+        
         if self._paper_trading:
-            self._robot._fake_crypto += bot._fake_cash / last_price
-            self._robot._fake_cash -= self._robot._fake_crypto * last_price
+            crypto_trade_amount = bot._fake_cash / last_price
+            bot._fake_crypto += crypto_trade_amount
+            bot._fake_cash -= crypto_trade_amount * last_price
             
         else:
             pass
@@ -98,9 +97,15 @@ class TradeHands():
         if self._long_position != None:
             self._long_position["exit_price"] = last_price
             self._long_position["exit_time"]  = datetime.now()
+            return
+            
         if self._paper_trading:
-            self._robot._fake_cash += self._robot._fake_crypto * last_price
-            self._robot._fake_crypto -= bot._fake_crypto / last_price
+            cash_trade_amount = bot._fake_crypto * last_price
+            bot._fake_cash += cash_trade_amount
+            bot._fake_crypto -= cash_trade_amount / last_price
             
         else:
             pass
+            
+    def set_sell_cushion(self, new_cushion):
+        self._sell_cushion = float(new_cushion)
