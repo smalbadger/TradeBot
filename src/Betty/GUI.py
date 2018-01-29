@@ -81,21 +81,39 @@ class BotGUI():
             # Choose currency to trade (radio buttons)
             ##########################################
         v = tk.StringVar()
-        v.set("BTC-USD")
+        v.set("LTC-USD")
 
         myList = [("BTC-USD"), ("BCH-USD"), ("LTC-USD"), ("ETH-USD")]
         
-        tk.Radiobutton(self._upper_dash_board, text=myList[0], padx = 20, variable=v, value=myList[0], command= lambda: self._bot.set_currency(myList[0])).grid(row=1, column=0)
-        tk.Radiobutton(self._upper_dash_board, text=myList[1], padx = 20, variable=v, value=myList[1], command= lambda: self._bot.set_currency(myList[1])).grid(row=2, column=0)
-        tk.Radiobutton(self._upper_dash_board, text=myList[2], padx = 20, variable=v, value=myList[2], command= lambda: self._bot.set_currency(myList[2])).grid(row=3, column=0)
-        tk.Radiobutton(self._upper_dash_board, text=myList[3], padx = 20, variable=v, value=myList[3], command= lambda: self._bot.set_currency(myList[3])).grid(row=4, column=0)
+        tk.Radiobutton(self._upper_dash_board, text=myList[0], padx=20, variable=v, value=myList[0], command=lambda: self._bot.set_currency(myList[0])).grid(row=1, column=0)
+        tk.Radiobutton(self._upper_dash_board, text=myList[1], padx=20, variable=v, value=myList[1], command=lambda: self._bot.set_currency(myList[1])).grid(row=2, column=0)
+        tk.Radiobutton(self._upper_dash_board, text=myList[2], padx=20, variable=v, value=myList[2], command=lambda: self._bot.set_currency(myList[2])).grid(row=3, column=0)
+        tk.Radiobutton(self._upper_dash_board, text=myList[3], padx=20, variable=v, value=myList[3], command=lambda: self._bot.set_currency(myList[3])).grid(row=4, column=0)
         
+            ###############################################################################################################
+            # Allows user to decide the duration of their investments. This is done by comparing different moving averages.
+            ###############################################################################################################
+        duration = tk.StringVar()
+        duration.set("long")
+        
+        tk.Label(self._upper_dash_board, text="Trade Duration").grid(row=1, column=2)
+        tk.Radiobutton(self._upper_dash_board, text="Short", padx=20, variable=duration, value="short", command=lambda: self._bot._trade_hands.set_trade_duration(duration.get())).grid(row=2, column=2)
+        tk.Radiobutton(self._upper_dash_board, text="Medium",padx=20, variable=duration, value="medium",command=lambda: self._bot._trade_hands.set_trade_duration(duration.get())).grid(row=3, column=2)
+        tk.Radiobutton(self._upper_dash_board, text="Long",  padx=20, variable=duration, value="long",  command=lambda: self._bot._trade_hands.set_trade_duration(duration.get())).grid(row=4, column=2)
             ################################################################
             # Allows the user to decide how sensitive they want sells to be.
             ################################################################
-        self._sell_cushion_slider = Scale(self._upper_dash_board, from_=0, to=2, length=600, tickinterval=0.5, resolution=0.01, orient=HORIZONTAL, command=self._bot._trade_hands.set_sell_cushion)
+        self._sell_cushion_slider = Scale(self._upper_dash_board, from_=0, to=1, length=300, tickinterval=0.5, resolution=0.01, orient=HORIZONTAL, command=self._bot._trade_hands.set_sell_cushion)
         self._sell_cushion_slider.grid(row=5, column=0, columnspan=3)
-        self._sell_cushion_slider.set(1)
+        self._sell_cushion_slider.set(.3)
+        
+            #####################################
+            # show position history in a list box
+            #####################################
+        scrollbar = Scrollbar(self._upper_dash_board, orient=VERTICAL)
+        scrollbar.grid(row=0, column=6, rowspan=5)
+        self._position_history_box = tk.Listbox(self._upper_dash_board, yscrollcommand=scrollbar.set)
+        self._position_history_box.grid(row=0, column=3, columnspan=3, rowspan=5)
 
             ######################################################
             # Choose which averages to show on graph (check boxes)
@@ -104,19 +122,11 @@ class BotGUI():
         self._average_type.set("simple")
         
         #This should be handled more gracefully eventually.
-        self._CheckVars = [IntVar(), IntVar(), IntVar(), IntVar(), IntVar()] 
-        self._averages = [(" SMA 120", 120), (" SMA 30", 30), (" SMA 10", 10), ("  SMA 5", 5), ("  SMA 1", 1)]
+        self._CheckVars = [IntVar(), IntVar(), IntVar(), IntVar()] 
+        self._averages =  [(" SMA 30", 30), (" SMA 10", 10), ("  SMA 5", 5), ("  SMA 1", 1)]
         i=0;
         
-        #these widgets are to show either weighted or unweighted averages
-        average_type_label = tk.Label(self._lower_dash_board, text="Average type:")
-        simple_average_button   = tk.Radiobutton(self._lower_dash_board, text="simple"  , variable=self._average_type, value="simple"  , command= lambda: self.update_line_charts(self._CheckVars, self._averages, self._average_type))
-        weighted_average_button = tk.Radiobutton(self._lower_dash_board, text="weighted", variable=self._average_type, value="weighted", command= lambda: self.update_line_charts(self._CheckVars, self._averages, self._average_type))
-        average_type_label.pack()
-        simple_average_button.pack()
-        weighted_average_button.pack()
-        
-        #these widgets are check boxes for the indivicual average sizes.
+        #these widgets are check boxes for showing the individual average sizes.
         for string, size in self._averages:
             x = tk.Checkbutton(self._lower_dash_board, text = string, variable = self._CheckVars[i], onvalue = 1, offvalue = 0, height=1, width = 6, command= lambda:self.update_line_charts(self._CheckVars, self._averages, self._average_type))
             x.pack(side=BOTTOM)
@@ -201,7 +211,7 @@ class BotGUI():
     def automatic_update(self):
         while True:
             if self._bot._running:
-                time.sleep(1/2)
+                time.sleep(5)
                 self.refresh_graphics(self._CheckVars, self._averages, self._average_type)
         
     ###################################################################################################
@@ -214,7 +224,33 @@ class BotGUI():
     def refresh_graphics(self, CheckVars, Average_list, average_type):
         self.update_line_charts(CheckVars, Average_list, average_type)
         self.update_pie_chart()
+        self.update_positions_history()
     
+    ###################################################################################################
+    #   function:       update_positions_history
+    #   purpose:        show all past and current holdings 
+    #
+    #   description:    This method will check for any trades that have been posted in the trade
+    #                   history, but not posted in the listbox
+    ###################################################################################################
+    def update_positions_history(self):
+        trade_history = self._bot._data_center._trade_history
+        current_position = self._bot._trade_hands._long_position
+        
+        self._position_history_box.delete(0, END)
+        
+        for past_position in trade_history:
+            entry = past_position["entry_price"]
+            exit  = past_position["exit_price"]
+            gain = ((exit-entry)/entry) * 100
+            msg = "{}   {}   {}%".format(str(entry), str(exit), str(gain))
+            self._position_history_box.insert(END, msg)
+                
+        if current_position != None:
+            msg = str(current_position["entry_price"])
+            self._position_history_box.insert(END, msg)
+                
+            
     ###################################################################################################
     #   function:       update_line_chart
     #   purpose:        shows new data that was not shown the last time the chart was updated, and 
@@ -236,21 +272,27 @@ class BotGUI():
             
             for i in range(len(CheckVars)):
                 if CheckVars[i].get() == 1:
-                    times  = [i["time"] for i in ma_collection[Average_list[i][1]]]
-                    values = [i[average_type.get()] for i in ma_collection[Average_list[i][1]]]
+                    times  = [j["time"] for j in ma_collection[Average_list[i][1]]]
+                    #times  = matplotlib.dates.date2num(times)
+                    values = [j[average_type.get()] for j in ma_collection[Average_list[i][1]]]
+                    if len(times) != len(values):
+                        print("Could not update graph because x and y dimensions were not the same for the ", Average_list[i][0], ".")
+                        return
                     self._price_plot.plot_date(times, values)[0]
                 else:
                     self._price_plot.plot_date([],[])
             
             times  = [i["time"] for i in crypto_history[self._bot.currency()]]
             prices = [i["price"] for i in crypto_history[self._bot.currency()]]
-            
+            if len(times) != len(prices):
+                print("Could not update graph because x and y dimensions were not the same for the price line")
+                return
             self._prices_line = self._price_plot.plot_date(times, prices)[0]
             
             #plot horizontal sell line
             current_position = self._bot._trade_hands._long_position
             if current_position != None:
-                self._price_plot.axhline(y=current_position["high_price"] - (1-self._bot._trade_hands._sell_cushion/100))
+                self._price_plot.axhline(y=current_position["high_price"] * (1-self._bot._trade_hands._sell_cushion/100))
                 
             self._line_chart_figure.autofmt_xdate()
             
@@ -258,6 +300,9 @@ class BotGUI():
             portfolio_history = self._bot._data_center._portfolio_history
             portfolio_values  = [element["total"] for element in portfolio_history if element["total"]!=0]
             times             = [element["time" ] for element in portfolio_history if element["total"]!=0]
+            
+            if len(portfolio_values) != len(times):
+                return
             
             self._portfolio_plot.clear()
             self._portfolio_line = self._portfolio_plot.plot_date(times, portfolio_values)
@@ -268,11 +313,14 @@ class BotGUI():
                 self._portfolio_plot.axvline(x=trade["entry_time"], color="g")
                 self._portfolio_plot.axvline(x=trade["exit_time"], color="r")
             
-            
             if current_position != None:
                 self._portfolio_plot.axvline(x=current_position["entry_time"], color="g")
-        
+            
         except:
+            x_max = crypto_history[self._bot.currency()][-1]    
+            x_min = crypto_history[self._bot.currency()][0]
+            self._portfolio_plot.set_xlim([x_min, x_max])
+            self._price_plot.set_xlim([x_min, x_max])
             return
         
     ###################################################################################################

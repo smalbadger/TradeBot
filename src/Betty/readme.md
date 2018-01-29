@@ -7,9 +7,7 @@ This document will walk you through my architecture
 
 ### TODO's:
 + cosmetics:
-    + print vertical buy/sell times on price chart
     + add option to show price on price chart
-    + update charts automatically
     + make x-axes the same, and make y axes display actual numbers
     + create box that shows matched position history and percent gain/loss
     + allow user to pick time frame they want to see on plots.

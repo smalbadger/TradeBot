@@ -7,7 +7,7 @@ class DataCenter():
         self._crypto_history = {"BTC-USD": [], "BCH-USD": [], "LTC-USD": [], "ETH-USD": []}
         self._trade_history  = []
         self._portfolio_history = []
-        self._ma_collection = {1:[], 5:[], 10:[], 30:[], 120: []}
+        self._ma_collection = {1:[], 5:[], 10:[], 30:[]}
         #self._time_date_regex = re.compile('\dT\d.\d\w') # ^[0-9]*T[0-9]*\.[0-9]*[^0-9]*?
 
     def dispatch_message(self, msg):
@@ -92,7 +92,7 @@ class DataCenter():
         # get a datetime object from the string and append that to the message
         new_date_str = time[0:-1]
         new_date_str = new_date_str[:10] + " " + new_date_str[11:-7]
-        return datetime.strptime(new_date_str, '%Y-%m-%d %H:%M:%S')
+        return datetime.strptime(new_date_str, '%Y-%m-%d %H:%M:%S') - timedelta(hours=3)
 
     def get_portfolio(self):
         #amount is how much of a currency you own. The value is the worth in USD
@@ -119,6 +119,7 @@ class DataCenter():
             accounts = self._robot.client().get_accounts()
         except:
             print("ERROR: Could not request accounts from GDAX.")
+            return portfolio
         
         
         for account in accounts:
