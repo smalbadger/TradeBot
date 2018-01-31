@@ -97,9 +97,9 @@ class BotGUI():
         duration.set("long")
         
         tk.Label(self._upper_dash_board, text="Trade Duration").grid(row=1, column=2)
-        tk.Radiobutton(self._upper_dash_board, text="Short", padx=20, variable=duration, value="short", command=lambda: self._bot._trade_hands.set_trade_duration(duration.get())).grid(row=2, column=2)
-        tk.Radiobutton(self._upper_dash_board, text="Medium",padx=20, variable=duration, value="medium",command=lambda: self._bot._trade_hands.set_trade_duration(duration.get())).grid(row=3, column=2)
-        tk.Radiobutton(self._upper_dash_board, text="Long",  padx=20, variable=duration, value="long",  command=lambda: self._bot._trade_hands.set_trade_duration(duration.get())).grid(row=4, column=2)
+        tk.Radiobutton(self._upper_dash_board, text="Short", variable=duration, value="short", command=lambda: self._bot._trade_hands.set_trade_duration(duration.get())).grid(row=2, column=2)
+        tk.Radiobutton(self._upper_dash_board, text="Medium",variable=duration, value="medium",command=lambda: self._bot._trade_hands.set_trade_duration(duration.get())).grid(row=3, column=2)
+        tk.Radiobutton(self._upper_dash_board, text="Long",  variable=duration, value="long",  command=lambda: self._bot._trade_hands.set_trade_duration(duration.get())).grid(row=4, column=2)
             ################################################################
             # Allows the user to decide how sensitive they want sells to be.
             ################################################################

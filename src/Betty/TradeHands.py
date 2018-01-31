@@ -44,7 +44,7 @@ class TradeHands():
                 elif self._trade_duration == "medium":
                     sma_a = sma_5
                     sma_b = sma_10
-                elif sefl._trade_duration == "long":
+                elif self._trade_duration == "long":
                     sma_a = sma_10
                     sma_b = sma_30
                 else:
@@ -98,17 +98,24 @@ class TradeHands():
             
         else:
             available_cash = DC._portfolio_history[-1]["USD"]["amount"]
-            target_price = round(last_price*1.001, 2)
+            target_price = round(last_price-0.01, 2)
             transaction_crypto_size = round(available_cash / (target_price),6)
             while transaction_crypto_size * target_price > available_cash:
                 transaction_crypto_size -= .01
-            order_msg = bot.client().buy(size=str(transaction_crypto_size), product_id=bot.currency(), price=str(target_price), type="limit", post_only=True)
+            order_msg = bot.client().buy(size=str(transaction_crypto_size), product_id=bot.currency(), type="market")
+            
+            original_target = target_price
+            while "status" in order_msg and order_msg["status"] == "rejected":
+                if target_price/original_target > .99:
+                    target_price = round(target_price-0.01, 2)
+                    order_msg = bot.client().buy(size=str(transaction_crypto_size), product_id=bot.currency(), type="market")
+                
             
             if "message" in order_msg:
                 print(order_msg["message"])
-                print("Attempted to buy {:5.2f} {} @ ${:5.2f} for a total of ${:5.2f}".format(transaction_cryto_size, bot.currency(), target_price, transaction_crypto_size*target_price))
+                print("Attempted to buy {:5.2f} {} @ ${:5.2f} for a total of ${:5.2f}".format(transaction_crypto_size, bot.currency(), target_price, transaction_crypto_size*target_price))
             else:
-                print(msg)
+                print(order_msg)
             
     def sell(self):
         print("\t\t\t\t\t\t\t\t\t\tSELLING")
@@ -126,8 +133,8 @@ class TradeHands():
             
         else:
             available_currency = DC._portfolio_history[-1][bot.currency()]["amount"]
-            target_price = round(last_price*0.999, 2)
-            order_msg = bot.client().sell(size=str(available_currency), product_id=bot.currency(), price=str(target_price), type="limit", post_only=True)
+            target_price = round(last_price+0.01, 2)
+            order_msg = bot.client().sell(size=str(available_currency), product_id=bot.currency(), type="market")
             print(order_msg)
             
     def set_sell_cushion(self, new_cushion):
