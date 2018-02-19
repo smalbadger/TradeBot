@@ -24,12 +24,18 @@ from datetime import datetime, timedelta
 ################################################################################
 #                                 BotSocket                                    #
 ################################################################################
-class BotSocket(gdax.WebsocketClient):
+class DataRetriever(gdax.WebsocketClient):
     def __init__(self, product=None, channels=None, should_print=True):
-        super(BotSocket, self).__init__(products=product, channels=channels)
+        super(DataRetriever, self).__init__(products=product, channels=channels)
 
         self._should_print = should_print
-        self._mongo_client = MongoClient(port=27017)
+
+	    #create a mongo client with sam's credentials:
+	    #username: sam
+	    #password: GoodVibrations_69
+	    #127.0.0.1 is local host meaning that our database is on this computer, 
+	    #and we only have access to the cryptos database
+        self._mongo_client = MongoClient("mongodb://sam:GoodVibrations_69@127.0.0.1/cryptos")
         self._db = self._mongo_client.cryptos
 
 
@@ -57,3 +63,7 @@ class BotSocket(gdax.WebsocketClient):
 
     def clear_history(self):
         self._history = {"BTC-USD": [], "BCH-USD": [], "LTC-USD": [], "ETH-USD": []}
+
+if __name__ == "__main__":
+    dr = DataRetriever(product=["BTC-USD", "LTC-USD", "ETH-USD", "BCH-USD"], channels=["matches"])
+    dr.start()
