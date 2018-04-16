@@ -1,18 +1,20 @@
 """
     Author: Sam Badger
 
-    This is the BotSocket class. It's really just a wrapper for the gdax.WebsocketClient class.
-    Creating this wrapper allows us to do whatever we want with the data coming in.
+    This is the BotSocket class. It's really just a wrapper for the gdax.WebsocketClient 
+    class. Creating this wrapper allows us to do whatever we want with the data coming in.
+    The gdax websocket is used to get constant product information. There are also specific 
+    channels that you can subscribe to. Just go to the official gdax documentation to see 
+    them.
 
-    The gdax websocket is used to get constant product information. There are also specific channels
-    that you can subscribe to. Just go to the official gdax documentation to see them.
+    Currently, the BotSocket just takes all of the product prices once orders have been 
+    completed and puts the information into arrays. There is a history dictionary with an 
+    array of each product so that each bot can access only the information of the product 
+    it's interested in.
 
-    Currently, the BotSocket just takes all of the product prices once orders have been completed and
-    puts the information into arrays. There is a history dictionary with an array of each product so
-    that each bot can access only the information of the product it's interested in.
-
-    Note that the on_open, on_message, and on_close methods are all methods of the WebsocketClient, but
-    we are over-writing them. These are the only methods that can be over written from the WebsocketClient,
+    Note that the on_open, on_message, and on_close methods are all methods of the 
+    WebsocketClient, but we are over-writing them. These are the only methods that can be 
+    over written from the WebsocketClient,
     but feel free to create your own additional methods and member variables
 """
 
@@ -66,4 +68,4 @@ class DataRetriever(gdax.WebsocketClient):
 
 if __name__ == "__main__":
     dr = DataRetriever(product=["BTC-USD", "LTC-USD", "ETH-USD", "BCH-USD"], channels=["matches"])
-    dr.start()
+dr.start()

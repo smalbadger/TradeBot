@@ -3,12 +3,13 @@ from getpass import getpass
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
-username = input("Username: ")
-password = getpass()
+#username = input("Username: ")
+#password = getpass()
 db = 'cryptos'
 
 successful_login = True
-client = pymongo.MongoClient("mongodb://{}:{}@192.168.0.23/{}".format(username, password,db))
+client = pymongo.MongoClient("mongodb://sam:GoodVibrations_69@192.168.0.23/cryptos")
+#client = pymongo.MongoClient("mongodb://{}:{}@192.168.0.23/{}".format(username, password,db))
 
 db = client.cryptos
 
@@ -20,7 +21,7 @@ prices = []
 times = []
 
 time_delta = timedelta(minutes = 1)
-docs = db.BCH_matches.find().sort("time")
+docs = db.BCH_matches.find()
 
 start_time = docs[0]["time"]
 avg_price = 0
