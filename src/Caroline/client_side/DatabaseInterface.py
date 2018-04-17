@@ -1,6 +1,6 @@
 """
-    Authors: Nicholas Everhart and Sam Badger
-	Date Created: April 16, 2018
+Authors: Nicholas Everhart and Sam Badger
+Date Created: April 16, 2018
 """
 
 import sys
@@ -37,7 +37,7 @@ class DatabaseInterface:
 			* The dates are formatted as such:  mm/dd/yyyy
 		More specific times are not supported and providing hours, minutes or seconds 
 		will result in an error.
-				   
+		
 		Output:
 		Will either write trades to a csv file and return none OR it will not write to 
 		a file and will return a list of dictionaries. each element in the list is a trade.
@@ -49,7 +49,6 @@ class DatabaseInterface:
 		cursor = self._db[crypto+"_matches"].find({"time": {"$gte": start, "$lte": end}});
 		print("There are", cursor.count(), "documents.")
 		filename = start.strftime("%d-%b-%Y") + "_" + end.strftime("%d-%b-%Y") + ".csv"
-		
 		
 		if csvWrite:
 			with open(filename, 'w') as csvFile:
