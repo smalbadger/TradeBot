@@ -25,6 +25,7 @@ class DatabaseInterface:
 		connection_str = "mongodb://{}:{}@{}/{}".format(user, password, db_IP, db_name)
 		self._mongo_client = MongoClient(connection_str)
 		self._db = self._mongo_client[db_name]
+	
 
 	
 	def fetchTradesInRange(self, startDate, endDate, crypto, csvWrite=True):
@@ -59,9 +60,10 @@ class DatabaseInterface:
 				for doc in cursor:
 					writer.writerow(doc)
 		else:
-			return list(cursor) 
+			return list(cursor)
 
-# if this file is ran as a stand-alone module, we'll instantiate a 
+# if this file is ran as a stand-alone module, we'll instantiate a database interface object
+# and fetch data.
 if __name__ == "__main__":
 	interface = DatabaseInterface("sam", "GoodVibrations_69", "cryptos", "192.168.0.23")
 	interface.fetchTradesInRange("01/01/2018","04/16/2018","BCH")
