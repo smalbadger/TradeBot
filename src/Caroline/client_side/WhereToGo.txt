@@ -1,0 +1,32 @@
+Nic: paper. 
+Sam: code.
+
+1.	Make an account with GDAX and setup API keys
+
+2.	Set up MongoDB server on Ubuntu and allow remote access
+
+3.	continually retrieve data from GDAX and store it in the Mongo
+		- storing price, time, and side of trade information
+		
+4.	download whatever data from server as a csv file for offline development.
+
+5.	preprocess data
+		- summarizing data by taking mean of price within a window (a few minutes)
+		- removing time and formulating it as a supervised learning problem.
+		
+6.	Train an LSTM network. Play around with details of the network such as number of hidden 
+	layers, hidden layer size, activation functions, etc. Find out what is best for our 
+	problem.
+	
+7.	Add more features to the dataset such as number of buys and number of sells in the 
+	specified window - maybe more complex data such as standard deviation of points within 
+	the window.
+
+8.	repeat step 6 and step 7
+
+9.	Convert to online learning somehow - Our project for this class may include this, and 
+	maybe not. We'll see how far I get in the next couple days.
+	
+10.	Make recommendation system given LSTM prediction (Should we buy or sell and how much?)
+
+11. Make the freaking trades and a butt-ton of money.

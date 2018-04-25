@@ -1,0 +1,40 @@
+We are going to try use "long short-term memory" (LSTM) networks to try to predict cryptocurrency price. Most of this stuff was found from the website: "https://machinelearningmastery.com/prepare-univariate-time-series-data-long-short-term-memory-networks/". Here are a couple things about LSTMs:
+
+1. LSTMs expect 3D input, and it can be challenging to get your head around this the first
+   time.
+2. LSTMs don’t like sequences of more than 200-400 time steps, so the data will need to be
+   split into samples. This is because long sequences will take a long ass time to train and
+   there is the vanishing gradiant problem.
+   
+   
+Since we are dealing with a lot of missing data, we need to find a way to cope with it. 2 ways are suggested:
+
+1. Ignore any missing data by deleting the rows. This is easy for us because we don't have   
+   the rows at all.
+2. try to fill in the missing values. We should not do this because taking the mean between 2 
+   known points will probably not be accurate for our problem.
+
+
+LSTMs shouldn't be trained with more than 200-400 time steps at a time, so we need to split our data. How do we decide where to split? Good question!
+
+1. just split at every 200 datapoints for now. We can try 300, 400, and maybe even 500 later.
+
+
+
+
+
+
+Since we will most likely be dealing with multiple input variables, this is a helpful guide: https://machinelearningmastery.com/multivariate-time-series-forecasting-lstms-keras/
+Summary:
+1. Need to transfer your time-series problem to a supervised learning problem. see: 
+   https://machinelearningmastery.com/convert-time-series-supervised-learning-problem-python/ 
+   for more information about this. We also need to normalize our data.
+2. split data into training and testing data. and reshape it to work with LSTM
+3. 
+
+
+
+
+
+----------------------------------------------------------------------------------------------
+
