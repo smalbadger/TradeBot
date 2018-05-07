@@ -16,8 +16,8 @@ from simulation import TradingSimulation
 
 from numpy.random import seed
 from tensorflow import set_random_seed
-#seed(2)
-#set_random_seed(2)
+seed(2)
+set_random_seed(2)
 
 
 ##############################################################
@@ -38,7 +38,7 @@ print("\t\tDONE")
 ##############################################################
 print("Preprocessing data...", end='')
 processed_docs = []
-time_delta = timedelta(minutes = 3)
+time_delta = timedelta(minutes = 10)
 start_time = docs[0]["time"]
 avg_price = 0
 count = 0
@@ -194,7 +194,7 @@ scaler2 = preprocessing.MinMaxScaler(feature_range=(-1, 1))
 
 # frame as supervised learning
 reframed = series_to_supervised(dataset, 1, 1)
-# drop columns we don't want to predict
+ # drop columns we don't want to predict
 reframed.drop(reframed.columns[[7,8,9,10,11,12,13]], axis=1, inplace=True)
 #print(reframed.head())
 #print(dataset.head())
@@ -203,7 +203,7 @@ print("DONE")
 ##############################################################
 ############### Prepare Train and Test Data Sets #############
 ##############################################################
-PERCENT_TRAIN = 95
+PERCENT_TRAIN = 70
 values = reframed.values
 n_train = int(round(reframed.shape[0] * (PERCENT_TRAIN/100)))
 train = values[:n_train, :]
@@ -226,15 +226,15 @@ model.add(LSTM(50, input_shape=(train_X.shape[1], train_X.shape[2])))
 model.add(Dense(1))
 model.compile(loss='mean_squared_logarithmic_error', optimizer='adam', metrics=['accuracy'])
 # fit network
-history = model.fit(train_X, train_y, epochs=10, batch_size=500, validation_data=(test_X, test_y), verbose=2, shuffle=False)
+history = model.fit(train_X, train_y, epochs=20, batch_size=500, validation_data=(test_X, test_y), verbose=2, shuffle=False)
 
 # plot history - This allows us to see how many epics we should use
-'''
+
 plt.plot(history.history['loss'], label='train')
 plt.plot(history.history['val_loss'], label='test')
 plt.legend()
 plt.show()
-'''
+
 
 ##############################################################
 ##################### Use Model to Predict ###################
@@ -243,31 +243,80 @@ predicted_scores = model.predict(test_X)
 orig_scores = test_y
 prices = test[:,3]
 
+plt.subplot(3,1,1)
+plt.scatter(predicted_scores, orig_scores)
+
 predicted_scores = scaler2.fit_transform(predicted_scores)
 orig_scores = scaler2.fit_transform(np.reshape(test_y,(-1,1)))
+
+plt.subplot(3,1,2)
+plt.scatter(predicted_scores, orig_scores)
+
 prices_scaled = scaler2.fit_transform(np.reshape(prices,(-1,1)))
 
-mean = np.mean(predicted_scores)
-#print(yhat)
+mean  = np.mean(predicted_scores)
+
 for i in range(len(predicted_scores)):
 	predicted_scores[i] = predicted_scores[i] - mean
+	
+plt.subplot(3,1,3)
+plt.scatter(predicted_scores, orig_scores)
+plt.show()
 
 times = test[:,1]
 for i in range(len(times)):
 	times[i] = datetime.strptime(times[i], '%Y-%m-%d %H:%M:%S')
+
+plt.subplot(3, 1, 1)
 plt.plot(times,predicted_scores)
-plt.plot(times,orig_scores)
-plt.plot(times,prices_scaled)
-plt.show()
+plt.title("Predicted Scores", y=0.5, loc='right')
+
+plt.subplot(3, 1, 2)
+plt.plot(times,prices)
+plt.title("Price", y=0.5, loc='right')
+
+plt.subplot(3, 1, 3)
+
 	
 ##############################################################
 ############# Simulate Trading Given Predictions #############
 ##############################################################
+
 sim = TradingSimulation(predicted_scores, prices, times)
 sim.play()
 
+
+moneys = []
+barriers = [i/1000 for i in range(1,2000,1)]
+
+for i in barriers:
+	sim._activation_barrier = i
+	sim.play()
+	moneys.append(sim._dollars)
+	sim.reset()
+
+plt.plot(barriers,moneys)
+plt.title("Activation Barrier vs. Portfolio Value", y=0.5, loc='right')
+plt.show()
+
+sim._activation_barrier = float(input("Activation Barrier: "))
+sim.play()
+
+'''
+moneys = []
+waits = [i for i in range(1,3600,1)]
+
+for i in waits:
+	sim._buy_delay = timedelta(seconds = i)
+	sim.play()
+	moneys.append(sim._dollars)
+	sim.reset()
+
+plt.plot(waits,moneys)
+plt.show()
 	
-
-
+sim._buy_delay = timedelta(seconds = int(input("Buy Delay: ")))
+sim.play()
+'''
 
 
