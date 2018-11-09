@@ -20,6 +20,69 @@ seed(2)
 set_random_seed(2)
 
 
+
+from datetime import datetime, timedelta
+
+class TradingSimulation:
+	def __init__(self, predictions, prices, times):
+		self._num_points = len(predictions)
+		self._preds  = predictions
+		self._prices = prices
+		self._times  = times
+		self._activation_barrier = 1
+		self._buy_delay = timedelta(hours = 12)
+		self._dollars = 1000
+		self._crypto = 0
+		self._state = "wait"	# wait to sell - we need to buy first
+		
+	def reset(self):
+		self._activation_barrier = 1
+		self._buy_delay = timedelta(hours = 12)
+		self._dollars = 1000
+		self._crypto = 0
+		self._state = "wait"	# wait to sell - we need to buy first
+		
+	
+	def play(self):
+		print("Now running simulations")
+		self._state = "wait"
+		sellTime = self._times[0]
+		sellPrice = self._prices[0]
+		lowPrice = sellPrice
+		for i in range(self._num_points):
+			if self._state == "hold":
+				curPred = self._preds[i]
+				if curPred >= self._activation_barrier or self._prices[i] < buyPrice * .95:
+					sellTime = self._times[i]
+					sellPrice = self._prices[i]
+					lowPrice = sellPrice
+					self._state = "wait"
+					self._dollars = (self._crypto * self._prices[i])# * (1-.003)
+					print("SELL @ {:.2f}: ${:7.2f} {:.6f}".format(self._prices[i], self._dollars, self._crypto))
+					self._crypto = 0
+					
+			elif self._state == "wait":
+				curTime = self._times[i]
+				
+				if self._prices[i] <= (sellPrice * .997):
+					if self._prices[i] <= lowPrice:
+						lowPrice = self._prices[i]
+					else:
+						self._state = "hold"
+						buyPrice = self._prices[i]
+						self._crypto = (self._dollars/buyPrice)# * (1 - 0.003)
+						print("BUY  @ {:.2f}: ${:7.2f} {:.6f}".format(self._prices[i], self._dollars, self._crypto))
+						self._dollars = 0
+				
+					
+		if self._dollars == 0:
+			self._dollars = (self._crypto * self._prices[-1])
+		print("Final portfolio value: {:.2f}".format(self._dollars))
+	
+
+
+
+
 ##############################################################
 ############ read in csv file and convert types ##############
 ##############################################################
@@ -189,8 +252,8 @@ scaler1 = preprocessing.MinMaxScaler(feature_range=(0, 1))
 scaler2 = preprocessing.MinMaxScaler(feature_range=(-1, 1))
 
 # scale the columns - uncomment to scale
-#dataset[scale_cols1] = scaler1.fit_transform(dataset[scale_cols1])
-#dataset[scale_cols2] = scaler2.fit_transform(dataset[scale_cols2])
+dataset[scale_cols1] = scaler1.fit_transform(dataset[scale_cols1])
+dataset[scale_cols2] = scaler2.fit_transform(dataset[scale_cols2])
 
 # frame as supervised learning
 reframed = series_to_supervised(dataset, 1, 1)
@@ -239,7 +302,6 @@ plt.show()
 ##############################################################
 ##################### Use Model to Predict ###################
 ##############################################################
-'''
 yhat = model.predict(test_X)
 test_X = test_X.reshape((test_X.shape[0], test_X.shape[2]))
 # invert scaling for forecast
@@ -256,7 +318,7 @@ rmse = sqrt(mean_squared_error(inv_y, inv_yhat))
 print("============================================")
 print('Test RMSE: %.3f' % rmse)
 print("============================================")
-'''
+
 
 
 
